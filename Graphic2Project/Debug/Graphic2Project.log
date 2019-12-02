@@ -1,0 +1,4 @@
+﻿  Graphic2Project.cpp
+D:\Fullsail\Graphic2\Graphic2_Project\Graphic2Project\Graphic2Project\Graphic2Project.cpp(288,34): warning C4244: '=': conversion from 'UINT' to 'FLOAT', possible loss of data
+D:\Fullsail\Graphic2\Graphic2_Project\Graphic2Project\Graphic2Project\Graphic2Project.cpp(289,33): warning C4244: '=': conversion from 'UINT' to 'FLOAT', possible loss of data
+  Graphic2Project.vcxproj -> D:\Fullsail\Graphic2\Graphic2_Project\Graphic2Project\Debug\Graphic2Project.exe
