@@ -8,3 +8,4 @@ float4 main(OutputVertex inputPixel) : SV_TARGET
 {
 	return inputPixel.Color;
 }
+

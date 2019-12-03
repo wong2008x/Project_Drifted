@@ -3,18 +3,18 @@
 
 #include "framework.h"
 #include "Graphic2Project.h"
-#include <d3d11.h>
-#include <directxmath.h>
-#pragma comment(lib,"d3d11.lib")
-#include "PixelShader.csh"
-#include "VertexShader.csh"
 
+
+
+using namespace std;
 using namespace DirectX;
 
 struct SimpleVertex
 {
 	XMFLOAT4 Pos;
 	XMFLOAT4 Color;
+	//XMFLOAT3 Norm;
+	//XMFLOAT2 Tex;
 };
 
 struct ConstantBuffer
@@ -35,20 +35,42 @@ struct WVP
 
 unsigned int numVerts;
 
-ID3D11Device* mDev;
-IDXGISwapChain* mSwap;
-ID3D11DeviceContext* mContext;
-ID3D11RenderTargetView* mRTV;
+ID3D11Device* mDev = nullptr;
+IDXGISwapChain* mSwap = nullptr;
+ID3D11DeviceContext* mContext = nullptr;
+ID3D11RenderTargetView* mRTV = nullptr;
 D3D11_VIEWPORT mPort;
-ID3D11Buffer* vBuff;
-ID3D11InputLayout* vLayout;
+
+ID3D11Buffer* vBuff = nullptr;
+
+ID3D11InputLayout* vLayout = nullptr;
+ID3D11InputLayout* vMeshLayout = nullptr;
+
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
-ID3D11VertexShader* vShader; //HLSL
-ID3D11PixelShader* pShader;  //HLSL
-ID3D11Buffer* cBuff; //Constant Buffer
+D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
+
+ID3D11VertexShader* vShader = nullptr; //HLSL
+ID3D11PixelShader* pShader = nullptr;  //HLSL
+
+ID3D11Buffer* cBuff = nullptr; //Constant Buffer
+
+//Mesh Loader
+ID3D11Buffer* vBuffMesh = nullptr;
+ID3D11Buffer* iBuffMesh = nullptr;
+ID3D11VertexShader* vMeshShader = nullptr;//HLSL
+ID3D11PixelShader* pMeshShader = nullptr;
+ID3D11ShaderResourceView* vTextureRV = nullptr;
+ID3D11Texture2D* enviromentTexture = nullptr;
+ID3D11SamplerState* mSamplerLinear = nullptr;
+
+ID3D11Texture2D* zBuffer = nullptr;
+ID3D11DepthStencilView* zBufferView = nullptr;
+
 //XMMATRIX                g_World;
 //XMMATRIX                g_View;
 //XMMATRIX                g_Projection;
+
+
 float aspectRatio = 1.0f;
 
 #define MAX_LOADSTRING 100
@@ -105,58 +127,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		if (msg.message == WM_QUIT)
 			break;
 
-		//Render();
+		Render();
 
-		float color[] = { 0, 0, 1, 1 };
-		mContext->ClearRenderTargetView(mRTV, color);
-
-		//Setup the pipeline
-
-		//output merger
-		ID3D11RenderTargetView* tempRTV[] = { mRTV };
-		mContext->OMSetRenderTargets(1, tempRTV, nullptr);
-		// rasterizer
-		mContext->RSSetViewports(1, &mPort);
-		// Input Assembler
-		mContext->IASetInputLayout(vLayout);
-		UINT strides[] = { sizeof(SimpleVertex) };
-		UINT offsets[] = { 0 };
-		ID3D11Buffer* tempVB[] = { vBuff };
-		mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
-		mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-
-		mContext->VSSetShader(vShader, 0, 0);
-		mContext->PSSetShader(pShader, 0, 0);
-
-		static float rotation = 0; rotation += 0.01f;
-		XMMATRIX temp = XMMatrixIdentity();
-		temp = XMMatrixTranslation(0, 0, 2);
-		XMMATRIX temp2 = XMMatrixRotationY(rotation);
-		temp = XMMatrixMultiply(temp2, temp);
-		XMStoreFloat4x4(&myMatricies.g_World,temp);
-
-		//view
-		temp = XMMatrixLookAtLH({ 2,2,-1 }, { 0,0,1 }, { 0,1,0 });
-		XMStoreFloat4x4(&myMatricies.g_View, temp);
-
-		//projection
-		temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
-		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
-
-
-		D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-		HRESULT hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-		*((WVP*)(gpuBuffer.pData)) = myMatricies;
-		mContext->Unmap(cBuff, 0);
-
-		ID3D11Buffer* constants[] = { cBuff };
-		mContext->VSSetConstantBuffers(0, 1, constants);
-
-
-		mContext->Draw(numVerts, 0);
-
-		mSwap->Present(1, 0);
+		
     }
 	CleanupDevice();
 
@@ -220,7 +193,23 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    GetClientRect(hWnd, &mWinR);
 
    //my codes here   
-   D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
+   D3D_DRIVER_TYPE driverTypes[] =
+   {
+	   D3D_DRIVER_TYPE_HARDWARE,
+	   D3D_DRIVER_TYPE_WARP,
+	   D3D_DRIVER_TYPE_REFERENCE,
+   };
+   UINT numDriverTypes = ARRAYSIZE(driverTypes);
+
+   D3D_FEATURE_LEVEL featureLevels[] =
+   {
+	   D3D_FEATURE_LEVEL_11_1,
+	   D3D_FEATURE_LEVEL_11_0,
+	   D3D_FEATURE_LEVEL_10_1,
+	   D3D_FEATURE_LEVEL_10_0,
+   };
+   UINT numFeatureLevels = ARRAYSIZE(featureLevels);
+
    DXGI_SWAP_CHAIN_DESC swap;
    ZeroMemory(&swap, sizeof(DXGI_SWAP_CHAIN_DESC));
    swap.BufferCount = 1;
@@ -242,8 +231,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
-   hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, D3D11_CREATE_DEVICE_DEBUG, 
-	   &dx11, 1, D3D11_SDK_VERSION, &swap, &mSwap, &mDev, 0, &mContext);
+   hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, 
+	   featureLevels, numFeatureLevels, D3D11_SDK_VERSION, &swap, &mSwap, &mDev, &dx11, &mContext);
 
    ID3D11Resource* backBuffer;
    hr = mSwap->GetBuffer(0, __uuidof(backBuffer), (void**)&backBuffer);
@@ -251,39 +240,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    backBuffer->Release();
 
-   //D3D_DRIVER_TYPE driverTypes[] =
-   //{
-	  // D3D_DRIVER_TYPE_HARDWARE,
-	  // D3D_DRIVER_TYPE_WARP,
-	  // D3D_DRIVER_TYPE_REFERENCE,
-   //};
-   //UINT numDriverTypes = ARRAYSIZE(driverTypes);
-
-   //D3D_FEATURE_LEVEL featureLevels[] =
-   //{
-	  // D3D_FEATURE_LEVEL_11_1,
-	  // D3D_FEATURE_LEVEL_11_0,
-	  // D3D_FEATURE_LEVEL_10_1,
-	  // D3D_FEATURE_LEVEL_10_0,
-   //};
-   //UINT numFeatureLevels = ARRAYSIZE(featureLevels);
-
-   //for (UINT driverTypeIndex = 0; driverTypeIndex < numDriverTypes; driverTypeIndex++)
-   //{
-	  // g_driverType = driverTypes[driverTypeIndex];
-	  // hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, featureLevels, numFeatureLevels,
-		 //  D3D11_SDK_VERSION, &mDev, &g_featureLevel, &g_pImmediateContext);
-
-	  // if (hr == E_INVALIDARG)
-	  // {
-		 //  // DirectX 11.0 platforms will not recognize D3D_FEATURE_LEVEL_11_1 so we need to retry without it
-		 //  hr = D3D11CreateDevice(nullptr, g_driverType, nullptr, createDeviceFlags, &featureLevels[1], numFeatureLevels - 1,
-			//   D3D11_SDK_VERSION, &g_pd3dDevice, &g_featureLevel, &g_pImmediateContext);
-	  // }
-
-	  // if (SUCCEEDED(hr))
-		 //  break;
-   //}
 
    mPort.Height = swap.BufferDesc.Height;
    mPort.Width = swap.BufferDesc.Width;
@@ -294,16 +250,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    SimpleVertex tri[] = // NDC
    {
 	   { {0, 1.0f, 0 , 1},  {1, 1, 0 , 1} },
-	   { {0.25f, -0.25f, 0.25f, 1},  {1, 0, 1, 1} },
-	   { {-0.25f, -0.25f, 0.25f, 1},  {1, 1, 1, 1} },
+	   { {0.25f, -0.25f, -0.25f, 1},  {1, 0, 1, 1} },
+	   { {-0.25f, -0.25f, -0.25f, 1},  {1, 1, 1, 1} },
 
 	   { {0, 1.0f, 0 , 1},  {1, 1, 0 , 1} },
 	   { {0.25f, -0.25f, 0.25f, 1},  {1, 0, 1, 1} },
 	   { {0.25f, -0.25f, -0.25f, 1},  {1, 1, 1, 1} },
 
 	   { {0, 1.0f, 0 , 1},  {1, 1, 0 , 1} },
-	   { {-0.25f, -0.25f, -0.25f, 1},  {1, 0, 1, 1} },
-	   { {0.25f, -0.25f, -0.25f, 1},  {1, 1, 1, 1} },
+	   { {-0.25f, -0.25f, 0.25f, 1},  {1, 0, 1, 1} },
+	   { {0.25f, -0.25f, 0.25f, 1},  {1, 1, 1, 1} },
 
 	   { {0, 1.0f, 0 , 1},  {1, 1, 0 , 1} },
 	   { {-0.25f, -0.25f, -0.25f, 1},  {1, 0, 1, 1} },
@@ -321,7 +277,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    bDesc.MiscFlags = 0;
    bDesc.CPUAccessFlags = 0;
    bDesc.StructureByteStride = 0;
-   bDesc.Usage = D3D11_USAGE_DEFAULT;
+   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
    
    subData.pSysMem = tri;
 
@@ -334,10 +290,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    //Describe it to D3D11
    D3D11_INPUT_ELEMENT_DESC ieDesc[] =
    {
-		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 },
    };
-   hr= mDev->CreateInputLayout(ieDesc,2, VertexShader, sizeof(VertexShader), &vLayout);
+   hr= mDev->CreateInputLayout(ieDesc, 2, VertexShader, sizeof(VertexShader), &vLayout);
 
 
    //Constant Buffer
@@ -352,17 +308,67 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hr= mDev->CreateBuffer(&bDesc, nullptr, &cBuff);
 
-   //// Initialize the world matrices
-   //g_World = XMMatrixIdentity();
+   //Load Mesh
 
-   //// Initialize the view matrix
-   //XMVECTOR Eye = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
-   //XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-   //XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-   //g_View = XMMatrixLookAtLH(Eye, At, Up);
 
-   //// Initialize the projection matrix
-   //g_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspectRatio, 0.01f, 100.0f);
+   bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+   bDesc.ByteWidth = sizeof(Rock_data);
+   bDesc.MiscFlags = 0;
+   bDesc.CPUAccessFlags = 0;
+   bDesc.StructureByteStride = 0;
+   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+
+   subData.pSysMem = Rock_data;
+
+   hr=mDev->CreateBuffer(&bDesc, &subData, &vBuffMesh);
+
+   //Index Buffer mesh
+   bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+   bDesc.ByteWidth = sizeof(Rock_indicies);
+   subData.pSysMem = Rock_indicies;
+   hr = mDev->CreateBuffer(&bDesc, &subData, &iBuffMesh);
+
+   //Load New Mesh
+   hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &vMeshShader);
+   hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pMeshShader);
+   D3D11_INPUT_ELEMENT_DESC meshInputDesc[] =
+   {
+		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+   };
+   // Load the Texture
+   hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Rock_Diffuse.dds", (ID3D11Resource**)&enviromentTexture, &vTextureRV);
+
+   // Create the sample state
+   D3D11_SAMPLER_DESC sampDesc = {};
+   sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+   sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+   sampDesc.MinLOD = 0;
+   sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+   hr = mDev->CreateSamplerState(&sampDesc, &mSamplerLinear);
+
+   hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vMeshLayout);
+
+   CD3D11_TEXTURE2D_DESC zDesc;
+   ZeroMemory(&zDesc, sizeof(zDesc));
+   zDesc.ArraySize = 1;
+   zDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+   zDesc.Width = swap.BufferDesc.Width;
+   zDesc.Height = swap.BufferDesc.Height;
+   zDesc.Format = DXGI_FORMAT_D32_FLOAT;
+   zDesc.Usage = D3D11_USAGE_DEFAULT;
+   zDesc.MipLevels = 1;
+   zDesc.SampleDesc.Count = 1;
+
+   hr = mDev->CreateTexture2D(&zDesc, nullptr, &zBuffer);
+   hr = mDev->CreateDepthStencilView(zBuffer,nullptr,&zBufferView);
+
+
+
 
    return TRUE;
 }
@@ -452,62 +458,104 @@ void Render()
 		t = (timeCur - timeStart) / 1000.0f;
 	}
 
-	// Rotate cube around the origin
-	//g_World = XMMatrixRotationY(t);
+	float color[] = { 0, 1, 1, 1 };
+	mContext->ClearRenderTargetView(mRTV, color);
 
-	//ConstantBuffer cb1;
-	//cb1.mWorld = XMMatrixTranspose(g_World);
-	//cb1.mView = XMMatrixTranspose(g_View);
-	//cb1.mProjection = XMMatrixTranspose(g_Projection);
+	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1, 0);
+	//Setup the pipeline
+	//output merger
+	ID3D11RenderTargetView* tempRTV[] = { mRTV };
+	mContext->OMSetRenderTargets(1, tempRTV, zBufferView);
+	// rasterizer
+	mContext->RSSetViewports(1, &mPort);
+	// Input Assembler
+	mContext->IASetInputLayout(vLayout);
+	UINT strides[] = { sizeof(SimpleVertex) };
+	UINT offsets[] = { 0 };
+	ID3D11Buffer* tempVB[] = { vBuff };
+	mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
+	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	//mContext-> UpdateSubresource(cBuff, 0, nullptr, &cb1, 0, 0);
+	mContext->VSSetShader(vShader, 0, 0);
+	mContext->PSSetShader(pShader, 0, 0);
 
-	//Rendering here
+	XMMATRIX temp = XMMatrixIdentity();
+	temp = XMMatrixTranslation(10, 0, 4);
+	XMMATRIX temp2 = XMMatrixRotationY(t);
+	temp = XMMatrixMultiply(temp2, temp);
+	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
-	//float color[] = { 0, 0, 1, 1 };
-	//mContext->ClearRenderTargetView(mRTV, color);
+	//view
+	temp = XMMatrixLookAtLH({ 3,5,-5 }, { 0,0,1 }, { 0,1,0 });
+	XMStoreFloat4x4(&myMatricies.g_View, temp);
 
-	////Setup the pipeline
-
-	////output merger
-	//ID3D11RenderTargetView* tempRTV[] = { mRTV };
-	//mContext->OMSetRenderTargets(1, tempRTV, nullptr);
-	//// rasterizer
-	//mContext->RSSetViewports(1, &mPort);
-	//// Input Assembler
-	//mContext->IASetInputLayout(vLayout);
-	//UINT strides[] = { sizeof(SimpleVertex) };
-	//UINT offsets[] = { 0 };
-	//ID3D11Buffer* tempVB[] = { vBuff };
-	//mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
-	//mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//projection
+	temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
+	XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 
 
+	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
+	HRESULT hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatricies;
+	mContext->Unmap(cBuff, 0);
+
+	ID3D11Buffer* constants[] = { cBuff };
+	mContext->VSSetConstantBuffers(0, 1, constants);
+
+	mContext->Draw(numVerts, 0);
 
 
-	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-	//HRESULT hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-	//*((XMMATRIX)(gpuBuffer.pData)) =
-			//Vertex Shader Stage
-		mContext->VSSetShader(vShader, 0, 0);
+	ID3D11ShaderResourceView* texView[] = { vTextureRV };
+	mContext->PSSetShaderResources(0, 1, texView);
+	mContext->PSSetSamplers(0, 1, &mSamplerLinear);
 
-		mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	//Set Pipline
+	UINT mesh_strides[] = { sizeof(_OBJ_VERT_) };
+	UINT mesh_offsets[] = { 0 };
+	ID3D11Buffer* meshVB[] = { vBuffMesh };
+	mContext->IASetVertexBuffers(0, 1, meshVB, mesh_strides, mesh_offsets);
+	mContext->IASetIndexBuffer(iBuffMesh, DXGI_FORMAT_R32_UINT, 0);
+	mContext->VSSetShader(vMeshShader, 0, 0);
+	mContext->PSSetShader(pMeshShader, 0, 0);
+	mContext->IASetInputLayout(vMeshLayout);
 
-		//Pixel Shader
-		mContext->PSSetShader(pShader, 0, 0);
-		mContext->PSSetConstantBuffers(0, 1, &cBuff);
+	temp = XMMatrixIdentity();
+	temp2 = XMMatrixRotationY(t);
+	temp = XMMatrixMultiply(temp2, temp);
+	XMStoreFloat4x4(&myMatricies.g_World, temp);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatricies;
+	mContext->Unmap(cBuff, 0);
 
-		mContext->Draw(numVerts, 0);
+
+	mContext->DrawIndexed(1908, 0, 0);
+	mSwap->Present(1, 0);
 }
+
 void CleanupDevice()
 {
-	mRTV->Release();
-	mContext->Release();
-	mSwap->Release();
-	mDev->Release();
-	vBuff->Release();
+	if(mRTV)mRTV->Release();
+	if(mContext)mContext->Release();
+	if(mSwap)mSwap->Release();
+	if (mDev)mDev->Release();
+
+	if (zBuffer)zBuffer->Release();
+	if (zBufferView)zBufferView->Release();
+	if(vBuff)vBuff->Release();
 	if(cBuff)cBuff->Release();
-	vLayout->Release();
-	vShader->Release();
-	pShader->Release();
+	if (vBuffMesh)vBuffMesh->Release();
+	if (iBuffMesh)iBuffMesh->Release();
+
+	if(vLayout)vLayout->Release();
+	if (vMeshLayout)vMeshLayout->Release();
+
+	if(vShader)vShader->Release();
+	if(pShader)pShader->Release();
+
+	if (vMeshShader)vMeshShader->Release();
+	if (pMeshShader)pMeshShader->Release();
+
+	if (vTextureRV)vTextureRV->Release();
+	if (enviromentTexture)enviromentTexture->Release();
+	if (mSamplerLinear)mSamplerLinear->Release();
 }

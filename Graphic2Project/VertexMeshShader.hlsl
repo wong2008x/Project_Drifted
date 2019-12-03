@@ -1,17 +1,19 @@
 
 
 //#pragma pack_matrix(row_major)
+
 struct InputStruct
 {
-	float4 Pos : POSITION;
-	float4 Color : COLOR;
-
+	float3 Pos : POSITION;
+	float3 Tex : TEXCOORD;
+	float3 Norm : NORMAL;
 };
 
 struct OutputVertex
 {
 	float4 Pos : SV_POSITION;
 	float4 Color : OCOLOR;
+	float3 Tex : TEXCOORD;
 };
 
 cbuffer ConstantBuffer	 : register(b0)
@@ -25,11 +27,13 @@ cbuffer ConstantBuffer	 : register(b0)
 OutputVertex main(InputStruct input) 
 {
 	OutputVertex output = (OutputVertex)0;
-	output.Pos = input.Pos;
-	output.Color = input.Color;
+	output.Pos = float4(input.Pos,1);
 	output.Pos = mul(World, output.Pos ); //because it is column major
 	output.Pos = mul(View, output.Pos );
 	output.Pos = mul(Projection, output.Pos );
+	output.Tex = input.Tex;
+	//output.Norm = mul(float4(input.Norm, 1), World).xyz;
+	//output.Tex = input.Tex;
 
 	return output;
 }
