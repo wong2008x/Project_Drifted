@@ -12,8 +12,8 @@ struct InputStruct
 struct OutputVertex
 {
 	float4 Pos : SV_POSITION;
-	float4 Color : OCOLOR;
 	float3 Tex : TEXCOORD;
+	float3 Norm : NORMAL;
 };
 
 cbuffer ConstantBuffer	 : register(b0)
@@ -32,8 +32,7 @@ OutputVertex main(InputStruct input)
 	output.Pos = mul(View, output.Pos );
 	output.Pos = mul(Projection, output.Pos );
 	output.Tex = input.Tex;
-	//output.Norm = mul(float4(input.Norm, 1), World).xyz;
-	//output.Tex = input.Tex;
-
+	output.Norm = mul(World, float4(input.Norm, 1)).xyz;
+	output.Norm = normalize(output.Norm);
 	return output;
 }
