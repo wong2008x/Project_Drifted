@@ -16,10 +16,16 @@ struct OutputVertex
 float4 main(OutputVertex input) : SV_TARGET
 {
 	float4 diffuseColor = { 0.7f, 0.7f, 0.0f, 1.0f};
-
 	float3 lightDirection = { 0,0,1.0f };
 	float4 textureColor;
-	//float3 lightDir;
+
+	float4 pointLColor = { 0.0f,1.0f,1.0f,1.0f };
+	float4 pointLPos = { 0.0f,0.5f,0.0f,1.0f };
+	float PointLightRadius = 0.05f;
+	float4 pLightDir=pointLPos-input.PosW;
+	float pDistance = length(pLightDir);
+	pLightDir = normalize(pLightDir);
+
 	float lightIntensity;
 	float4 color = {0,0,0,0};
 
@@ -27,7 +33,11 @@ float4 main(OutputVertex input) : SV_TARGET
 	lightIntensity = -dot(lightDirection, input.Norm);
 	color = saturate(diffuseColor * lightIntensity);
 
+	float fAngularATT = dot(input.Norm, pLightDir);
+	float fRangeATT = 1.0 - saturate(pDistance / PointLightRadius);
 	color = color * textureColor;
+	color += color * pointLColor * fAngularATT * fRangeATT;
+
 	return color;
 	
 }

@@ -411,7 +411,7 @@ void Render()
 		t = (timeCur - timeStart) / 1000.0f;
 	}
 
-	float color[] = { 0, 1, 1, 1 };
+	float color[] = { 0, 0, 0, 1 };
 	mContext->ClearRenderTargetView(mRTV, color);
 
 	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1, 0);
@@ -438,13 +438,7 @@ void Render()
 	temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
-	//view
-	//temp = XMMatrixLookAtLH({ 0,4,-10,0 }, { 0,1,0,0 }, { 0,1,0,0 });
-	//XMStoreFloat4x4(&myMatricies.g_View, temp);
 
-	//projection
-	//temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
-	//XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 
 
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
