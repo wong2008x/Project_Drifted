@@ -6,72 +6,9 @@
 
 
 
-using namespace std;
-using namespace DirectX;
-
-struct SimpleVertex
-{
-	XMFLOAT4 Pos;
-	XMFLOAT4 Color;
-	//XMFLOAT3 Norm;
-	//XMFLOAT2 Tex;
-};
-
-struct ConstantBuffer
-{
-	XMMATRIX mWorld;
-	XMMATRIX mView;
-	XMMATRIX mProjection;
-	XMFLOAT4 vLightDir[2];
-	XMFLOAT4 vLightColor[2];
-	XMFLOAT4 vOutputColor;
-};
-struct WVP
-{
-	XMFLOAT4X4                g_World;
-	XMFLOAT4X4                g_View;
-	XMFLOAT4X4                g_Projection;
-}myMatricies;
-
-unsigned int numVerts;
-
-ID3D11Device* mDev = nullptr;
-IDXGISwapChain* mSwap = nullptr;
-ID3D11DeviceContext* mContext = nullptr;
-ID3D11RenderTargetView* mRTV = nullptr;
-D3D11_VIEWPORT mPort;
-
-ID3D11Buffer* vBuff = nullptr;
-
-ID3D11InputLayout* vLayout = nullptr;
-ID3D11InputLayout* vMeshLayout = nullptr;
-
-D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
-D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
-
-ID3D11VertexShader* vShader = nullptr; //HLSL
-ID3D11PixelShader* pShader = nullptr;  //HLSL
-
-ID3D11Buffer* cBuff = nullptr; //Constant Buffer
-
-//Mesh Loader
-ID3D11Buffer* vBuffMesh = nullptr;
-ID3D11Buffer* iBuffMesh = nullptr;
-ID3D11VertexShader* vMeshShader = nullptr;//HLSL
-ID3D11PixelShader* pMeshShader = nullptr;
-ID3D11ShaderResourceView* vTextureRV = nullptr;
-ID3D11Texture2D* enviromentTexture = nullptr;
-ID3D11SamplerState* mSamplerLinear = nullptr;
-
-ID3D11Texture2D* zBuffer = nullptr;
-ID3D11DepthStencilView* zBufferView = nullptr;
-
-//XMMATRIX                g_World;
-//XMMATRIX                g_View;
-//XMMATRIX                g_Projection;
 
 
-float aspectRatio = 1.0f;
+
 
 #define MAX_LOADSTRING 100
 
@@ -89,6 +26,8 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 void CleanupDevice();
 void Render();
+void UpdateCamera();
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -126,7 +65,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
 		if (msg.message == WM_QUIT)
 			break;
+		
 
+		UpdateCamera();
 		Render();
 
 		
@@ -367,7 +308,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreateTexture2D(&zDesc, nullptr, &zBuffer);
    hr = mDev->CreateDepthStencilView(zBuffer,nullptr,&zBufferView);
 
+   // Initialize the world matrices
+   XMMATRIX temp = XMMatrixIdentity();
+   XMStoreFloat4x4(&myMatricies.g_World,temp);
 
+   // Initialize the view matrix
+   XMVECTOR Eye = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
+   XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+   XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+   temp = XMMatrixLookAtLH(Eye, At, Up);
+   XMStoreFloat4x4(&myMatricies.g_View, temp);
+
+   temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
+   XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 
 
    return TRUE;
@@ -486,12 +439,12 @@ void Render()
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
 	//view
-	temp = XMMatrixLookAtLH({ 0,4,-10,0 }, { 0,1,0,0 }, { 0,1,0,0 });
-	XMStoreFloat4x4(&myMatricies.g_View, temp);
+	//temp = XMMatrixLookAtLH({ 0,4,-10,0 }, { 0,1,0,0 }, { 0,1,0,0 });
+	//XMStoreFloat4x4(&myMatricies.g_View, temp);
 
 	//projection
-	temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
-	XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	//temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
+	//XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 
 
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
@@ -520,8 +473,8 @@ void Render()
 	mContext->IASetInputLayout(vMeshLayout);
 
 	temp = XMMatrixIdentity();
-	//temp2 = XMMatrixRotationY(t);
-	//temp = XMMatrixMultiply(temp2, temp);
+	temp2 = XMMatrixRotationY(t);
+	temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
@@ -530,6 +483,56 @@ void Render()
 
 	mContext->DrawIndexed(1908, 0, 0);
 	mSwap->Present(1, 0);
+}
+void UpdateCamera()
+{
+	const float delta_time = 0.8f;
+
+
+
+	if (GetAsyncKeyState('W'))
+	{
+		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, cameraSpeed * delta_time);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState('S'))
+	{
+		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, -cameraSpeed * delta_time);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState('D'))
+	{
+
+		XMMATRIX translation = XMMatrixTranslation(-cameraSpeed * delta_time, 0.0f, 0.0f);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState('A'))
+	{
+		XMMATRIX translation = XMMatrixTranslation(cameraSpeed * delta_time, 0.0f, 0.0f);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState('X'))
+	{
+		XMMATRIX translation = XMMatrixTranslation(0.0f, -cameraSpeed * delta_time, 0.0f);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState(VK_SPACE))
+	{
+		XMMATRIX translation = XMMatrixTranslation(0.0f, cameraSpeed * delta_time, 0.0f);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
 }
 
 void CleanupDevice()

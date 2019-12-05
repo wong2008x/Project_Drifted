@@ -6,9 +6,12 @@ SamplerState samLinear : register(s0);
 
 struct OutputVertex
 {
-	float4 Pos : SV_POSITION;
-	float3 Tex : TEXCOORD;
-	float3 Norm : NORMAL;
+	
+		float4 Pos : SV_POSITION;
+		float3 Tex : TEXCOORD;
+		float3 Norm : NORMAL;
+		float4 PosW:WORLDPOS;
+	
 };
 float4 main(OutputVertex input) : SV_TARGET
 {
