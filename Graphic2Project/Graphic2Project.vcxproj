@@ -152,6 +152,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Assets\Rock.h" />
+    <ClInclude Include="Assets\StoneHenge.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Graphic2Project.h" />
     <ClInclude Include="Resource.h" />
@@ -168,6 +169,7 @@
   <ItemGroup>
     <Image Include="Assets\Textures\Rock_Diffuse.dds" />
     <Image Include="Assets\Textures\Rock_Specular.dds" />
+    <Image Include="Assets\Textures\StoneHenge.dds" />
     <Image Include="Graphic2Project.ico" />
     <Image Include="small.ico" />
   </ItemGroup>

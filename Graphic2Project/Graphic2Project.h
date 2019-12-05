@@ -9,6 +9,7 @@
 #include "VertexShader.csh"
 #include "VertexMeshShader.csh"
 #include "Assets/Rock.h"	
+#include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
 #include <vector>
 
@@ -49,7 +50,7 @@ D3D11_VIEWPORT mPort;
 ID3D11Buffer* vBuff = nullptr;
 
 ID3D11InputLayout* vLayout = nullptr;
-ID3D11InputLayout* vMeshLayout = nullptr;
+
 
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
@@ -60,13 +61,23 @@ ID3D11PixelShader* pShader = nullptr;  //HLSL
 ID3D11Buffer* cBuff = nullptr; //Constant Buffer
 
 //Mesh Loader
-ID3D11Buffer* vBuffMesh = nullptr;
-ID3D11Buffer* iBuffMesh = nullptr;
-ID3D11VertexShader* vMeshShader = nullptr;//HLSL
-ID3D11PixelShader* pMeshShader = nullptr;
-ID3D11ShaderResourceView* vTextureRV = nullptr;
-ID3D11Texture2D* enviromentTexture = nullptr;
-ID3D11SamplerState* mSamplerLinear = nullptr;
+ID3D11Buffer* vRockBuff = nullptr;
+ID3D11Buffer* iRockBuff = nullptr;
+ID3D11VertexShader* vRockShader = nullptr;//HLSL
+ID3D11PixelShader* pRockShader = nullptr;
+ID3D11ShaderResourceView* rockTextureRV = nullptr;
+ID3D11Texture2D* rockTexture = nullptr;
+ID3D11InputLayout* vRockLayout = nullptr;
+ID3D11SamplerState* rockSamplerState = nullptr;
+
+ID3D11Buffer* vStoneBuff = nullptr;
+ID3D11Buffer* iStoneBuff = nullptr;
+ID3D11VertexShader* vStoneShader = nullptr;//HLSL
+ID3D11PixelShader* pStoneShader = nullptr;
+ID3D11ShaderResourceView* stoneTextureRV = nullptr;
+ID3D11Texture2D* stoneTexture = nullptr;
+ID3D11InputLayout* vStoneLayout = nullptr;
+ID3D11SamplerState* stoneSamplerState= nullptr;
 
 ID3D11Texture2D* zBuffer = nullptr;
 ID3D11DepthStencilView* zBufferView = nullptr;

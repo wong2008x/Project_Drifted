@@ -45,6 +45,9 @@
     <ClInclude Include="Utillity\DDSTextureLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Assets\StoneHenge.h">
+      <Filter>Assets</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Graphic2Project.cpp">
@@ -70,6 +73,9 @@
       <Filter>Assets\Textures</Filter>
     </Image>
     <Image Include="Assets\Textures\Rock_Diffuse.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Assets\Textures\StoneHenge.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
   </ItemGroup>

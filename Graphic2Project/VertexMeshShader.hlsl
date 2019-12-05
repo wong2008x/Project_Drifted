@@ -14,7 +14,7 @@ struct OutputVertex
 	float4 Pos : SV_POSITION;
 	float3 Tex : TEXCOORD;
 	float3 Norm : NORMAL;
-	float4 PosW:WORLDPOS;
+	float3 PosW:WORLDPOS;
 };
 
 cbuffer ConstantBuffer	 : register(b0)
@@ -30,11 +30,14 @@ OutputVertex main(InputStruct input)
 	OutputVertex output = (OutputVertex)0;
 	output.Pos = float4(input.Pos,1);
 	output.Pos = mul(World, output.Pos ); //because it is column major
-	output.PosW = output.Pos;
+	//for lighting
+	output.PosW = output.Pos.xyz;
+	output.Norm = mul(World, float4(input.Norm, 0)).xyz;
+
+	
 	output.Pos = mul(View, output.Pos );
 	output.Pos = mul(Projection, output.Pos );
 	output.Tex = input.Tex;
-	output.Norm = mul(World, float4(input.Norm, 1)).xyz;
-	output.Norm =normalize(output.Norm);
+
 	return output;
 }
