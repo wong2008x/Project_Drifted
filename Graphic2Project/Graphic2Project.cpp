@@ -486,7 +486,7 @@ void Render()
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
 	//view
-	temp = XMMatrixLookAtLH({ 3,5,-5 }, { 0,0,1 }, { 0,1,0 });
+	temp = XMMatrixLookAtLH({ 0,4,-10,0 }, { 0,1,0,0 }, { 0,1,0,0 });
 	XMStoreFloat4x4(&myMatricies.g_View, temp);
 
 	//projection
@@ -520,8 +520,8 @@ void Render()
 	mContext->IASetInputLayout(vMeshLayout);
 
 	temp = XMMatrixIdentity();
-	temp2 = XMMatrixRotationY(t);
-	temp = XMMatrixMultiply(temp2, temp);
+	//temp2 = XMMatrixRotationY(t);
+	//temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;

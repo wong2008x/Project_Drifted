@@ -32,7 +32,7 @@ OutputVertex main(InputStruct input)
 	output.Pos = mul(View, output.Pos );
 	output.Pos = mul(Projection, output.Pos );
 	output.Tex = input.Tex;
-	output.Norm = mul(World, float4(input.Norm, 1)).xyz;
-	output.Norm = normalize(output.Norm);
+	//output.Norm = mul(World, float4(input.Norm, 1)).xyz;
+	output.Norm = input.Norm;
 	return output;
 }
