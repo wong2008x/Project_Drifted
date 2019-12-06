@@ -47,19 +47,23 @@ ID3D11DeviceContext* mContext = nullptr;
 ID3D11RenderTargetView* mRTV = nullptr;
 D3D11_VIEWPORT mPort;
 
-ID3D11Buffer* vBuff = nullptr;
 
-ID3D11InputLayout* vLayout = nullptr;
 
 
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
 
+ID3D11Buffer* vBuff = nullptr;
+ID3D11InputLayout* vLayout = nullptr;
 ID3D11VertexShader* vShader = nullptr; //HLSL
 ID3D11PixelShader* pShader = nullptr;  //HLSL
-
 ID3D11Buffer* cBuff = nullptr; //Constant Buffer
 
+ID3D11Buffer* vBuff1 = nullptr;
+ID3D11Buffer* iBuff1 = nullptr;
+ID3D11VertexShader* vShader1 = nullptr; //HLSL
+ID3D11PixelShader* pShader1 = nullptr;  //HLSL
+ID3D11Buffer* cBuff1 = nullptr; //Constant Buffer
 //Mesh Loader
 ID3D11Buffer* vRockBuff = nullptr;
 ID3D11Buffer* iRockBuff = nullptr;

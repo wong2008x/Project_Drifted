@@ -27,7 +27,7 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 void CleanupDevice();
 void Render();
 void UpdateCamera();
-
+void createSphere(float fRadius, UINT uSlices, UINT uStacks);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -206,7 +206,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	   { {-0.25f, -0.25f, -0.25f, 1},  {1, 0, 1, 1} },
 	   { {-0.25f, -0.25f, 0.25f, 1},  {1, 1, 1, 1} },
    };
+
    numVerts = ARRAYSIZE(tri);
+
    //LOAD THE TRI
    D3D11_BUFFER_DESC bDesc;
    D3D11_SUBRESOURCE_DATA subData;
@@ -249,7 +251,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hr= mDev->CreateBuffer(&bDesc, nullptr, &cBuff);
 
-
+   //createSphere(0.2f, 20, 20);
 
 
 
@@ -501,9 +503,6 @@ void Render()
 	temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
-
-
-
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
 	HRESULT hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
@@ -513,6 +512,22 @@ void Render()
 	mContext->VSSetConstantBuffers(0, 1, constants);
 
 	mContext->Draw(numVerts, 0);
+
+	//mContext->IASetInputLayout(vLayout);
+	//tempVB[0] = { vBuff1 };
+	//mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
+	//mContext->IASetIndexBuffer(iBuff1, DXGI_FORMAT_R32_UINT, 0);
+	//mContext->VSSetShader(vShader1, 0, 0);
+	//mContext->PSSetShader(pShader1, 0, 0);
+	//temp = XMMatrixIdentity();
+	//temp = XMMatrixTranslation(-10, 0, 4);
+	//XMStoreFloat4x4(&myMatricies.g_World, temp);
+	//hr = mContext->Map(cBuff1, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	//*((WVP*)(gpuBuffer.pData)) = myMatricies;
+	//mContext->Unmap(cBuff1, 0);
+	//constants[0] = { cBuff1 };
+	//mContext->VSSetConstantBuffers(0, 1, constants);
+	//mContext->DrawIndexed(2280, 0,0);
 
 
 	//Draw Rock
@@ -532,26 +547,23 @@ void Render()
 
 	temp = XMMatrixIdentity();
 	temp = XMMatrixTranslation(-10,0,-2);
-	//temp2 = XMMatrixRotationY(t);
-	//temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
 
-
 	mContext->DrawIndexed(1908, 0, 0);
 
 
-	ID3D11ShaderResourceView* texView1[] = { stoneTextureRV };
-	mContext->PSSetShaderResources(0, 1, texView1);
+	texView[0] = { stoneTextureRV };
+	mContext->PSSetShaderResources(0, 1, texView);
 	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
 
 	//Set Pipline
-	UINT mesh_strides1[] = { sizeof(_OBJ_VERT_) };
-	UINT mesh_offsets1[] = { 0 };
-	ID3D11Buffer* meshVB1[] = { vStoneBuff };
-	mContext->IASetVertexBuffers(0, 1, meshVB1, mesh_strides1, mesh_offsets1);
+	mesh_strides[0] = { sizeof(_OBJ_VERT_) };
+	mesh_offsets[0] = { 0 };
+	meshVB[0] = { vStoneBuff };
+	mContext->IASetVertexBuffers(0, 1, meshVB, mesh_strides, mesh_offsets);
 	mContext->IASetIndexBuffer(iStoneBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vStoneShader, 0, 0);
 	mContext->PSSetShader(pStoneShader, 0, 0);
@@ -563,14 +575,11 @@ void Render()
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
 	mContext->DrawIndexed(2532, 0, 0);
-
 	mSwap->Present(1, 0);
 }
 void UpdateCamera()
 {
 	const float delta_time = 5.f;
-
-
 
 	if (GetAsyncKeyState('W'))
 	{
@@ -608,6 +617,20 @@ void UpdateCamera()
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
+	if (GetAsyncKeyState('Q'))
+	{
+		XMMATRIX rotation = XMMatrixRotationY(-cameraSpeed * delta_time);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(rotation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState('E'))
+	{
+		XMMATRIX rotation = XMMatrixRotationY(cameraSpeed * delta_time);
+		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
+		XMMATRIX result = XMMatrixMultiply(rotation, temp_camera);
+		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
 	if (GetAsyncKeyState(VK_SPACE))
 	{
 		XMMATRIX translation = XMMatrixTranslation(0.0f, cameraSpeed * delta_time, 0.0f);
@@ -615,6 +638,185 @@ void UpdateCamera()
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
+}
+
+void createSphere(float fRadius, UINT uSlices, UINT uStacks)
+{
+	UINT cFaces = 2 * (uStacks - 1) * uSlices;
+	UINT cVertices = (uStacks - 1) * uSlices + 2;
+
+	SimpleVertex* vertices = new SimpleVertex[cVertices];
+
+
+	UINT i, j;
+
+	const int CACHE_SIZE = 240 * 2;
+
+	// Sin/Cos caches
+	float sinI[CACHE_SIZE], cosI[CACHE_SIZE];
+	float sinJ[CACHE_SIZE], cosJ[CACHE_SIZE];
+
+	for (i = 0; i < uSlices; i++) {
+		sinI[i] = sinf((float)(2.0f * XM_PI * i / uSlices));
+		cosI[i] = cosf((float)(2.0f * XM_PI * i / uSlices));
+		// sincosf( 2.0f * D3DX_PI * i / uSlices, sinI + i, cosI + i );
+	}
+	for (j = 0; j < uStacks; j++) {
+		sinJ[j] = sinf((float)(XM_PI * j / uStacks));
+		cosJ[j] = cosf((float)(XM_PI * j / uStacks));
+		// sincosf( D3DX_PI * j / uStacks, sinJ + j, cosJ + j );
+	}
+
+	// Generate vertices
+	SimpleVertex* pVertex = vertices;
+
+	// +Z pole
+	pVertex->Pos = XMFLOAT4(0.0f, 0.0f, fRadius,1.0f);
+	pVertex->Color = XMFLOAT4(0.0f, 0.0f, 1.0f,1.0f);
+	pVertex++;
+
+	// Stacks
+	for (j = 1; j < uStacks; j++)
+	{
+		for (i = 0; i < uSlices; i++)
+		{
+			XMFLOAT3 norm(sinI[i] * sinJ[j], cosI[i] * sinJ[j], cosJ[j]);
+			XMFLOAT4 pos;
+			pos.x = norm.x * fRadius;
+			pos.y = norm.y * fRadius;
+			pos.z = norm.z * fRadius;
+
+			pVertex->Pos = pos; //norm * fRadius;
+			pVertex->Color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+
+			pVertex++;
+		}
+	}
+
+	// Z- pole
+	pVertex->Pos = XMFLOAT4(0.0f, 0.0f, -fRadius,1.0f);
+	pVertex->Color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	pVertex++;
+
+
+	UINT* indices = new UINT[cFaces * 3];
+
+	// Generate indices
+	UINT* pwFace = indices;
+
+	// Z+ pole
+	UINT uRowA = 0;
+	UINT uRowB = 1;
+
+	for (i = 0; i < uSlices - 1; i++)
+	{
+		pwFace[0] = (WORD)(uRowA);
+		pwFace[1] = (WORD)(uRowB + i + 1);
+		pwFace[2] = (WORD)(uRowB + i);
+		pwFace += 3;
+	}
+
+	pwFace[0] = (WORD)(uRowA);
+	pwFace[1] = (WORD)(uRowB);
+	pwFace[2] = (WORD)(uRowB + i);
+	pwFace += 3;
+
+	// Interior stacks
+	for (j = 1; j < uStacks - 1; j++)
+	{
+		uRowA = 1 + (j - 1) * uSlices;
+		uRowB = uRowA + uSlices;
+
+		for (i = 0; i < uSlices - 1; i++)
+		{
+			pwFace[0] = (WORD)(uRowA + i);
+			pwFace[1] = (WORD)(uRowA + i + 1);
+			pwFace[2] = (WORD)(uRowB + i);
+			pwFace += 3;
+
+			pwFace[0] = (WORD)(uRowA + i + 1);
+			pwFace[1] = (WORD)(uRowB + i + 1);
+			pwFace[2] = (WORD)(uRowB + i);
+			pwFace += 3;
+		}
+
+		pwFace[0] = (WORD)(uRowA + i);
+		pwFace[1] = (WORD)(uRowA);
+		pwFace[2] = (WORD)(uRowB + i);
+		pwFace += 3;
+
+		pwFace[0] = (WORD)(uRowA);
+		pwFace[1] = (WORD)(uRowB);
+		pwFace[2] = (WORD)(uRowB + i);
+		pwFace += 3;
+	}
+
+	// Z- pole
+	uRowA = 1 + (uStacks - 2) * uSlices;
+	uRowB = uRowA + uSlices;
+
+	for (i = 0; i < uSlices - 1; i++)
+	{
+		pwFace[0] = (WORD)(uRowA + i);
+		pwFace[1] = (WORD)(uRowA + i + 1);
+		pwFace[2] = (WORD)(uRowB);
+		pwFace += 3;
+	}
+
+	pwFace[0] = (WORD)(uRowA + i);
+	pwFace[1] = (WORD)(uRowA);
+	pwFace[2] = (WORD)(uRowB);
+	pwFace += 3;
+
+
+	D3D11_BUFFER_DESC bDesc;
+	D3D11_SUBRESOURCE_DATA subData;
+	ZeroMemory(&bDesc, sizeof(bDesc));
+	ZeroMemory(&subData, sizeof(subData));
+
+	bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bDesc.ByteWidth = sizeof(SimpleVertex);
+	bDesc.MiscFlags = 0;
+	bDesc.CPUAccessFlags = 0;
+	bDesc.StructureByteStride = 0;
+	bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+
+	subData.pSysMem = pVertex;
+
+	mDev->CreateBuffer(&bDesc, &subData, &vBuff1);
+
+	//Index Buffer mesh
+	bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	bDesc.ByteWidth = sizeof(UINT);
+	subData.pSysMem = pwFace;
+	mDev->CreateBuffer(&bDesc, &subData, &iBuff1);
+
+
+	mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader1);
+	mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader1);
+
+	D3D11_INPUT_ELEMENT_DESC ieDesc[] =
+	{
+		 { "POSITION" , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		 { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	};
+	mDev->CreateInputLayout(ieDesc, 2, VertexShader, sizeof(VertexShader), &vLayout);
+
+
+	//Constant Buffer
+	ZeroMemory(&bDesc, sizeof(bDesc));
+
+	bDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	bDesc.ByteWidth = sizeof(WVP);
+	bDesc.MiscFlags = 0;
+	bDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	bDesc.StructureByteStride = 0;
+	bDesc.Usage = D3D11_USAGE_DYNAMIC;
+
+	mDev->CreateBuffer(&bDesc, nullptr, &cBuff1);
+
+	delete[] vertices;
+	delete[] indices;
 }
 
 void CleanupDevice()
@@ -633,6 +835,12 @@ void CleanupDevice()
 	if (pShader)pShader->Release();
 	if (vLayout)vLayout->Release();
 
+	if (vBuff1)vBuff1->Release();
+	if (iBuff1)iBuff1->Release();
+	if (cBuff1)cBuff1->Release();
+	if (vShader1)vShader1->Release();
+	if (pShader1)pShader1->Release();
+	//if (vLayout1)vLayout1->Release();
 	//rock
 	if (vRockBuff)vRockBuff->Release();
 	if (iRockBuff)iRockBuff->Release();
