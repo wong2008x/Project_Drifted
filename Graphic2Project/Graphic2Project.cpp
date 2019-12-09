@@ -24,9 +24,7 @@ ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-void CleanupDevice();
-void Render();
-void UpdateCamera();
+
 void createSphere(float fRadius, UINT uSlices, UINT uStacks);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -53,7 +51,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_GRAPHIC2PROJECT));
 
     MSG msg;
-
+	mTimer.Restart();
     // Main message loop:
     while (true)//GetMessage(&msg, nullptr, 0, 0))
     {
@@ -66,7 +64,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		if (msg.message == WM_QUIT)
 			break;
 		
-
+		mTimer.Signal();
 		UpdateCamera();
 		Render();
 
@@ -520,7 +518,7 @@ void Render()
 	//mContext->VSSetShader(vShader1, 0, 0);
 	//mContext->PSSetShader(pShader1, 0, 0);
 	//temp = XMMatrixIdentity();
-	//temp = XMMatrixTranslation(-10, 0, 4);
+	//temp = XMMatrixTranslation(-5, 5, 4);
 	//XMStoreFloat4x4(&myMatricies.g_World, temp);
 	//hr = mContext->Map(cBuff1, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	//*((WVP*)(gpuBuffer.pData)) = myMatricies;
@@ -575,12 +573,13 @@ void Render()
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
 	mContext->DrawIndexed(2532, 0, 0);
+
 	mSwap->Present(1, 0);
 }
 void UpdateCamera()
 {
-	const float delta_time = 5.f;
-
+	
+	delta_time=mTimer.Delta();
 	if (GetAsyncKeyState('W'))
 	{
 		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, -cameraSpeed * delta_time);
@@ -598,14 +597,14 @@ void UpdateCamera()
 	if (GetAsyncKeyState('D'))
 	{
 
-		XMMATRIX translation = XMMatrixTranslation(-cameraSpeed * delta_time, 0.0f, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(-cameraSpeed * 2*delta_time, 0.0f, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
 	if (GetAsyncKeyState('A'))
 	{
-		XMMATRIX translation = XMMatrixTranslation(cameraSpeed * delta_time, 0.0f, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(cameraSpeed * 2*delta_time, 0.0f, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
@@ -785,9 +784,10 @@ void createSphere(float fRadius, UINT uSlices, UINT uStacks)
 
 	mDev->CreateBuffer(&bDesc, &subData, &vBuff1);
 
+
 	//Index Buffer mesh
 	bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	bDesc.ByteWidth = sizeof(UINT);
+	bDesc.ByteWidth = sizeof(UINT)* cFaces * 3;
 	subData.pSysMem = pwFace;
 	mDev->CreateBuffer(&bDesc, &subData, &iBuff1);
 
@@ -795,12 +795,12 @@ void createSphere(float fRadius, UINT uSlices, UINT uStacks)
 	mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader1);
 	mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader1);
 
-	D3D11_INPUT_ELEMENT_DESC ieDesc[] =
-	{
-		 { "POSITION" , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		 { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	};
-	mDev->CreateInputLayout(ieDesc, 2, VertexShader, sizeof(VertexShader), &vLayout);
+	//D3D11_INPUT_ELEMENT_DESC ieDesc[] =
+	//{
+	//	 { "POSITION" , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	//	 { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	//};
+	//mDev->CreateInputLayout(ieDesc, 2, VertexShader, sizeof(VertexShader), &vLayout);
 
 
 	//Constant Buffer

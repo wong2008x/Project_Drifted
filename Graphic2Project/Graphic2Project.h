@@ -12,6 +12,7 @@
 #include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
 #include <vector>
+#include "Utillity/XTime.h"
 
 using namespace std;
 using namespace DirectX;
@@ -39,8 +40,18 @@ struct WVP
 	XMFLOAT4X4                g_Projection;
 }myMatricies;
 
+//Forward declaration
+void CleanupDevice();
+void Render();
+void UpdateCamera();
+
+
+//Global Variable
 unsigned int numVerts;
 
+XTime mTimer;
+double delta_time = 0;
+float cameraSpeed = 5.f;
 ID3D11Device* mDev = nullptr;
 IDXGISwapChain* mSwap = nullptr;
 ID3D11DeviceContext* mContext = nullptr;
@@ -89,4 +100,3 @@ ID3D11DepthStencilView* zBufferView = nullptr;
 
 
 float aspectRatio = 1.0f;
-float cameraSpeed=0.01f;

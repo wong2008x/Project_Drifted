@@ -43,7 +43,7 @@ float4 main(OutputVertex input) : SV_TARGET
 	input.Norm = normalize(input.Norm);
 
 	//Apply Texture
-	input.Tex.xy= float2(float(sin(input.Tex.x * 500) * .01f + input.Tex.x), input.Tex.y);
+	//input.Tex.xy= float2(float(sin(input.Tex.x * 500) * .01f + input.Tex.x), input.Tex.y);
 	textureColor = txDiffuse.Sample(samLinear, input.Tex.xy);
 	
 	//Directional Light

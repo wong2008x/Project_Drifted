@@ -48,12 +48,18 @@
     <ClInclude Include="Assets\StoneHenge.h">
       <Filter>Assets</Filter>
     </ClInclude>
+    <ClInclude Include="Utillity\XTime.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Graphic2Project.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Utillity\DDSTextureLoader.cpp">
+      <Filter>Utility</Filter>
+    </ClCompile>
+    <ClCompile Include="Utillity\XTime.cpp">
       <Filter>Utility</Filter>
     </ClCompile>
   </ItemGroup>
