@@ -5,14 +5,7 @@
 #include "Graphic2Project.h"
 
 
-
-
-
-
-
 #define MAX_LOADSTRING 100
-
-
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -251,25 +244,34 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    //createSphere(0.2f, 20, 20);
 
-
-
    //Load Rock Mesh
+   /*
+f 1/1/1 4/2/2 2/4/3
+f 2/4/3 4/2/2 3/3/4
+f 6/9/5 7/10/6 5/5/7
+f 8/11/8 9/12/9 10/6/10
+f 11/13/11 12/14/12 13/7/13
+f 14/15/14 15/16/15 16/8/16
+*/
+
+   loadObject("Assets/Test.obj", rockVertex, rockIndices,true);
    ZeroMemory(&bDesc, sizeof(bDesc));
+   ZeroMemory(&subData, sizeof(subData));
+   unsigned int Indices[18] = { 0,3,1,1,3,2,5,6,4,7,8,9,10,11,12,13,14,15};
    bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-   bDesc.ByteWidth = sizeof(Rock_data);
+   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+   bDesc.ByteWidth = sizeof(SimpleMesh)*rockVertex.size();
    bDesc.MiscFlags = 0;
    bDesc.CPUAccessFlags = 0;
    bDesc.StructureByteStride = 0;
-   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
-
-   subData.pSysMem = Rock_data;
+   subData.pSysMem = rockVertex.data();
 
    hr=mDev->CreateBuffer(&bDesc, &subData, &vRockBuff);
 
    //Index Buffer mesh
    bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-   bDesc.ByteWidth = sizeof(Rock_indicies);
-   subData.pSysMem = Rock_indicies;
+   bDesc.ByteWidth = sizeof(unsigned int)*rockIndices.size();
+   subData.pSysMem = rockIndices.data();
    hr = mDev->CreateBuffer(&bDesc, &subData, &iRockBuff);
 
    //Load New Mesh
@@ -277,7 +279,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pRockShader);
    D3D11_INPUT_ELEMENT_DESC meshInputDesc[] =
    {
-		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
    };
@@ -294,7 +296,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    sampDesc.MinLOD = 0;
    sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
    hr = mDev->CreateSamplerState(&sampDesc, &rockSamplerState);
-
    hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vRockLayout);
 
    CD3D11_TEXTURE2D_DESC zDesc;
@@ -379,7 +380,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    temp = XMMatrixLookAtLH(Eye, At, Up);
    XMStoreFloat4x4(&myMatricies.g_View, temp);
 
-   temp = XMMatrixPerspectiveFovLH(3.14f / 2.0f, aspectRatio, 0.1f, 1000);
+   temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
    XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 
 
@@ -458,18 +459,7 @@ void Render()
 {
 	// Update our time
 	static float t = 0.0f;
-	if (g_driverType == D3D_DRIVER_TYPE_REFERENCE)
-	{
-		t += (float)XM_PI * 0.0125f;
-	}
-	else
-	{
-		static ULONGLONG timeStart = 0;
-		ULONGLONG timeCur = GetTickCount64();
-		if (timeStart == 0)
-			timeStart = timeCur;
-		t = (timeCur - timeStart) / 1000.0f;
-	}
+
 
 	float color[] = { 0.5, 0.5, 0.5, 1 };
 	mContext->ClearRenderTargetView(mRTV, color);
@@ -549,10 +539,12 @@ void Render()
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
+	mContext->DrawIndexed(rockIndices.size(), 0, 0);
 
-	mContext->DrawIndexed(1908, 0, 0);
 
 
+
+	//Draw StoneHenge
 	texView[0] = { stoneTextureRV };
 	mContext->PSSetShaderResources(0, 1, texView);
 	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
@@ -636,6 +628,74 @@ void UpdateCamera()
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
+	}
+	if (GetAsyncKeyState(VK_NUMPAD7))
+	{
+		fPlane+= 5*delta_time;
+
+		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	}
+	if (GetAsyncKeyState(VK_NUMPAD1))
+	{
+		fPlane -=  10*delta_time;
+		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		if (fPlane <=10)
+		{ 
+			fPlane = 10.0f;
+		temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		}
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	
+	}
+	if (GetAsyncKeyState(VK_NUMPAD8))
+	{
+		XMMATRIX temp;
+		FOV += 10*delta_time;
+		if (FOV >= 120.0f)
+		{
+			FOV = 120.0f;
+		}
+		temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	}
+	if (GetAsyncKeyState(VK_NUMPAD2))
+	{
+		XMMATRIX temp;
+		FOV -= 10*delta_time;
+		if (FOV <= 30.0f)
+		{
+			FOV = 30.0f;
+		}
+		temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	}
+	if (GetAsyncKeyState(VK_NUMPAD9))
+	{
+		nPlane +=  5*delta_time;
+
+		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	}
+	if (GetAsyncKeyState(VK_NUMPAD3))
+	{
+		XMMATRIX temp;
+		nPlane -=  delta_time;
+		
+		if (nPlane <= 0)
+		{
+			nPlane = 0.01f;
+		}
+		temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
+	}
+	if (GetAsyncKeyState(VK_NUMPAD0))
+	{
+		FOV = 75.0f;
+		nPlane = 0.01f;
+		fPlane = 100.0f;
+		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
+		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	}
 }
 
@@ -818,6 +878,92 @@ void createSphere(float fRadius, UINT uSlices, UINT uStacks)
 	delete[] vertices;
 	delete[] indices;
 }
+bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies,bool isRHCoord)
+{
+	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
+	std::vector<XMFLOAT3> tempVerts;
+	std::vector<XMFLOAT2> tempUVs;
+	std::vector<XMFLOAT3> tempNormals;
+	unsigned int vertexIndex;
+	unsigned int UVIndex;
+	unsigned int normIndex;
+	FILE* file;
+    fopen_s(&file,path, "r");
+	if (file == NULL) {
+		printf("Impossible to open the file !\n");
+		return false;
+	}
+
+	while (true)
+	{
+		char line[128];
+		int res = fscanf_s(file, "%s",line,sizeof(line));
+		if (res == EOF)
+			break;
+		if (strcmp(line, "v") == 0)
+		{
+			XMFLOAT3 vertex;
+			fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
+			if(isRHCoord)
+			vertex.z = -vertex.z;
+			tempVerts.push_back(vertex);
+		}
+		else if (strcmp(line, "vt") == 0)
+		{
+			XMFLOAT2 uv;
+			fscanf_s(file, "%f %f\n", &uv.x, &uv.y);
+			uv.y = 1 - uv.y;
+			tempUVs.push_back(uv);
+		}
+		else if (strcmp(line, "vn") == 0)
+		{
+			XMFLOAT3 norm;
+			fscanf_s(file, "%f %f %f\n", &norm.x, &norm.y, &norm.z);
+			if (isRHCoord)
+				norm.z = -norm.z;
+			tempNormals.push_back(norm);
+		}
+		else if (strcmp(line, "f") == 0) 
+		{
+			string vertex1, vertex2, vertex3;
+			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+			int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+			if (matches != 9) {
+				printf("File can't be read by this simple parser : ( Try exporting with other options\n");
+				return false;
+			}
+			vertexIndices.push_back(vertexIndex[0]);
+			vertexIndices.push_back(vertexIndex[1]);
+			vertexIndices.push_back(vertexIndex[2]);
+			uvIndices.push_back(uvIndex[0]);
+			uvIndices.push_back(uvIndex[1]);
+			uvIndices.push_back(uvIndex[2]);
+			normalIndices.push_back(normalIndex[0]);
+			normalIndices.push_back(normalIndex[1]);
+			normalIndices.push_back(normalIndex[2]);
+		}
+	}
+
+	for (unsigned int i = 0; i < vertexIndices.size(); i++)
+	{
+
+		SimpleMesh temp;
+		vertexIndex = vertexIndices[i];
+		temp.Pos = tempVerts[vertexIndex - 1];
+
+		UVIndex = uvIndices[i];
+		temp.Tex = tempUVs[UVIndex - 1];
+
+		normIndex = normalIndices[i];
+		temp.Norm = tempNormals[normIndex - 1];
+		
+		outVertices.push_back(temp);
+		outIndicies.push_back(i);
+	}
+
+	return true;
+}
+
 
 void CleanupDevice()
 {

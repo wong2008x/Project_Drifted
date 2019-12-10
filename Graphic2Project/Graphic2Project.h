@@ -12,6 +12,8 @@
 #include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
 #include <vector>
+#include <string>
+#include <fstream>
 #include "Utillity/XTime.h"
 
 using namespace std;
@@ -21,6 +23,12 @@ struct SimpleVertex
 {
 	XMFLOAT4 Pos;
 	XMFLOAT4 Color;
+};
+struct SimpleMesh
+{
+	XMFLOAT3 Pos;
+	XMFLOAT2 Tex;
+	XMFLOAT3 Norm;
 };
 
 struct ConstantBuffer
@@ -44,7 +52,7 @@ struct WVP
 void CleanupDevice();
 void Render();
 void UpdateCamera();
-
+bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies, bool isRHCoord);
 
 //Global Variable
 unsigned int numVerts;
@@ -75,7 +83,11 @@ ID3D11Buffer* iBuff1 = nullptr;
 ID3D11VertexShader* vShader1 = nullptr; //HLSL
 ID3D11PixelShader* pShader1 = nullptr;  //HLSL
 ID3D11Buffer* cBuff1 = nullptr; //Constant Buffer
+
+
 //Mesh Loader
+vector<SimpleMesh> rockVertex;
+vector<unsigned int> rockIndices;
 ID3D11Buffer* vRockBuff = nullptr;
 ID3D11Buffer* iRockBuff = nullptr;
 ID3D11VertexShader* vRockShader = nullptr;//HLSL
@@ -97,6 +109,7 @@ ID3D11SamplerState* stoneSamplerState= nullptr;
 ID3D11Texture2D* zBuffer = nullptr;
 ID3D11DepthStencilView* zBufferView = nullptr;
 
-
-
 float aspectRatio = 1.0f;
+float FOV = 75.0f	; 
+float nPlane = 0.01f;
+float fPlane = 100.0f;
