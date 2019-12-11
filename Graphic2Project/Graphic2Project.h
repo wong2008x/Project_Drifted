@@ -8,7 +8,6 @@
 #include "PixelMeshShader.csh"
 #include "VertexShader.csh"
 #include "VertexMeshShader.csh"
-#include "Assets/Rock.h"	
 #include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
 #include <vector>
@@ -27,7 +26,7 @@ struct SimpleVertex
 struct SimpleMesh
 {
 	XMFLOAT3 Pos;
-	XMFLOAT2 Tex;
+	XMFLOAT3 Tex;
 	XMFLOAT3 Norm;
 };
 
@@ -43,15 +42,35 @@ struct ConstantBuffer
 
 struct WVP
 {
-	XMFLOAT4X4                g_World;
-	XMFLOAT4X4                g_View;
-	XMFLOAT4X4                g_Projection;
+	XMFLOAT4X4                g_World;   //16
+	XMFLOAT4X4                g_View;    //16
+	XMFLOAT4X4                g_Projection; //16
+
+	XMFLOAT3 dLightDir;  //12
+	XMFLOAT4 dLightColor;//16
+	XMFLOAT3 pLightDir;//12
+	XMFLOAT3 pLightPos;//12
+	XMFLOAT4 pLightColor;//16
+	
+	XMFLOAT3 sLightDir;//12
+	XMFLOAT3 sLightPos;//12
+	XMFLOAT4 sLightColor;//16
+
+	bool spotLight;//4
+	bool pointLight;
+	bool dirLight;
+	bool isRotate; //3+7 packs
+
+
+	FLOAT innerAngle;//4
+	FLOAT outerAngle;//4
+	DOUBLE worldTime;//8//  1 pack
 }myMatricies;
 
 //Forward declaration
 void CleanupDevice();
 void Render();
-void UpdateCamera();
+void Update();
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies, bool isRHCoord);
 
 //Global Variable

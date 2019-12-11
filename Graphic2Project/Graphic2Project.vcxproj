@@ -151,7 +151,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Assets\Rock.h" />
     <ClInclude Include="Assets\StoneHenge.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="Graphic2Project.h" />

@@ -58,7 +58,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			break;
 		
 		mTimer.Signal();
-		UpdateCamera();
+		Update();
 		Render();
 
 		
@@ -244,20 +244,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    //createSphere(0.2f, 20, 20);
 
-   //Load Rock Mesh
-   /*
-f 1/1/1 4/2/2 2/4/3
-f 2/4/3 4/2/2 3/3/4
-f 6/9/5 7/10/6 5/5/7
-f 8/11/8 9/12/9 10/6/10
-f 11/13/11 12/14/12 13/7/13
-f 14/15/14 15/16/15 16/8/16
-*/
 
-   loadObject("Assets/Test.obj", rockVertex, rockIndices,true);
+
+   loadObject("Assets/Rock.obj", rockVertex, rockIndices,true);
    ZeroMemory(&bDesc, sizeof(bDesc));
    ZeroMemory(&subData, sizeof(subData));
-   unsigned int Indices[18] = { 0,3,1,1,3,2,5,6,4,7,8,9,10,11,12,13,14,15};
+
    bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
    bDesc.Usage = D3D11_USAGE_IMMUTABLE;
    bDesc.ByteWidth = sizeof(SimpleMesh)*rockVertex.size();
@@ -269,9 +261,10 @@ f 14/15/14 15/16/15 16/8/16
    hr=mDev->CreateBuffer(&bDesc, &subData, &vRockBuff);
 
    //Index Buffer mesh
+
+   subData.pSysMem = rockIndices.data();
    bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
    bDesc.ByteWidth = sizeof(unsigned int)*rockIndices.size();
-   subData.pSysMem = rockIndices.data();
    hr = mDev->CreateBuffer(&bDesc, &subData, &iRockBuff);
 
    //Load New Mesh
@@ -334,7 +327,7 @@ f 14/15/14 15/16/15 16/8/16
    hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pStoneShader);
    D3D11_INPUT_ELEMENT_DESC meshInputDesc2[] =
    {
-		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
    };
@@ -568,7 +561,7 @@ void Render()
 
 	mSwap->Present(1, 0);
 }
-void UpdateCamera()
+void Update()
 {
 	
 	delta_time=mTimer.Delta();
@@ -828,32 +821,32 @@ void createSphere(float fRadius, UINT uSlices, UINT uStacks)
 	pwFace += 3;
 
 
-	D3D11_BUFFER_DESC bDesc;
-	D3D11_SUBRESOURCE_DATA subData;
-	ZeroMemory(&bDesc, sizeof(bDesc));
-	ZeroMemory(&subData, sizeof(subData));
+	//D3D11_BUFFER_DESC bDesc;
+	//D3D11_SUBRESOURCE_DATA subData;
+	//ZeroMemory(&bDesc, sizeof(bDesc));
+	//ZeroMemory(&subData, sizeof(subData));
 
-	bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	bDesc.ByteWidth = sizeof(SimpleVertex);
-	bDesc.MiscFlags = 0;
-	bDesc.CPUAccessFlags = 0;
-	bDesc.StructureByteStride = 0;
-	bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	//bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	//bDesc.ByteWidth = sizeof(SimpleVertex);
+	//bDesc.MiscFlags = 0;
+	//bDesc.CPUAccessFlags = 0;
+	//bDesc.StructureByteStride = 0;
+	//bDesc.Usage = D3D11_USAGE_IMMUTABLE;
 
-	subData.pSysMem = pVertex;
+	//subData.pSysMem = pVertex;
 
-	mDev->CreateBuffer(&bDesc, &subData, &vBuff1);
+	//mDev->CreateBuffer(&bDesc, &subData, &vBuff1);
 
 
 	//Index Buffer mesh
-	bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	bDesc.ByteWidth = sizeof(UINT)* cFaces * 3;
-	subData.pSysMem = pwFace;
-	mDev->CreateBuffer(&bDesc, &subData, &iBuff1);
+	//bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	//bDesc.ByteWidth = sizeof(UINT)* cFaces * 3;
+	//subData.pSysMem = pwFace;
+	//mDev->CreateBuffer(&bDesc, &subData, &iBuff1);
 
 
-	mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader1);
-	mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader1);
+	//mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader1);
+	//mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader1);
 
 	//D3D11_INPUT_ELEMENT_DESC ieDesc[] =
 	//{
@@ -864,29 +857,29 @@ void createSphere(float fRadius, UINT uSlices, UINT uStacks)
 
 
 	//Constant Buffer
-	ZeroMemory(&bDesc, sizeof(bDesc));
+	//ZeroMemory(&bDesc, sizeof(bDesc));
 
-	bDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	bDesc.ByteWidth = sizeof(WVP);
-	bDesc.MiscFlags = 0;
-	bDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	bDesc.StructureByteStride = 0;
-	bDesc.Usage = D3D11_USAGE_DYNAMIC;
+	//bDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	//bDesc.ByteWidth = sizeof(WVP);
+	//bDesc.MiscFlags = 0;
+	//bDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	//bDesc.StructureByteStride = 0;
+	//bDesc.Usage = D3D11_USAGE_DYNAMIC;
 
-	mDev->CreateBuffer(&bDesc, nullptr, &cBuff1);
+	//mDev->CreateBuffer(&bDesc, nullptr, &cBuff1);
 
-	delete[] vertices;
-	delete[] indices;
+	//delete[] vertices;
+	//delete[] indices;
 }
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies,bool isRHCoord)
 {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector<XMFLOAT3> tempVerts;
-	std::vector<XMFLOAT2> tempUVs;
+	std::vector<XMFLOAT3> tempUVs;
 	std::vector<XMFLOAT3> tempNormals;
-	unsigned int vertexIndex;
-	unsigned int UVIndex;
-	unsigned int normIndex;
+	UINT vertexIndex;
+	UINT UVIndex;
+	UINT normIndex;
 	FILE* file;
     fopen_s(&file,path, "r");
 	if (file == NULL) {
@@ -910,7 +903,7 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 		}
 		else if (strcmp(line, "vt") == 0)
 		{
-			XMFLOAT2 uv;
+			XMFLOAT3 uv;
 			fscanf_s(file, "%f %f\n", &uv.x, &uv.y);
 			uv.y = 1 - uv.y;
 			tempUVs.push_back(uv);
@@ -927,7 +920,7 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 		{
 			string vertex1, vertex2, vertex3;
 			unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
-			int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[0], &uvIndex[0], &normalIndex[0], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[2], &uvIndex[2], &normalIndex[2]);
+			int matches = fscanf_s(file, "%d/%d/%d %d/%d/%d %d/%d/%d\n", &vertexIndex[2], &uvIndex[2], &normalIndex[2], &vertexIndex[1], &uvIndex[1], &normalIndex[1], &vertexIndex[0], &uvIndex[0], &normalIndex[0]);
 			if (matches != 9) {
 				printf("File can't be read by this simple parser : ( Try exporting with other options\n");
 				return false;

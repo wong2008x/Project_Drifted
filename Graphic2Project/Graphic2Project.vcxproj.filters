@@ -39,9 +39,6 @@
     <ClInclude Include="Graphic2Project.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Assets\Rock.h">
-      <Filter>Assets</Filter>
-    </ClInclude>
     <ClInclude Include="Utillity\DDSTextureLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
