@@ -30,42 +30,28 @@ struct SimpleMesh
 	XMFLOAT3 Norm;
 };
 
-struct ConstantBuffer
-{
-	XMMATRIX mWorld;
-	XMMATRIX mView;
-	XMMATRIX mProjection;
-	XMFLOAT4 vLightDir[2];
-	XMFLOAT4 vLightColor[2];
-	XMFLOAT4 vOutputColor;
-};
 
 struct WVP
 {
-	XMFLOAT4X4                g_World;   //16
-	XMFLOAT4X4                g_View;    //16
-	XMFLOAT4X4                g_Projection; //16
+	XMFLOAT4X4                g_World;   //64
+	XMFLOAT4X4                g_View;    //64
+	XMFLOAT4X4                g_Projection; //64
 
-	XMFLOAT3 dLightDir;  //12
-	XMFLOAT4 dLightColor;//16
-	XMFLOAT3 pLightDir;//12
-	XMFLOAT3 pLightPos;//12
-	XMFLOAT4 pLightColor;//16
-	
-	XMFLOAT3 sLightDir;//12
-	XMFLOAT3 sLightPos;//12
-	XMFLOAT4 sLightColor;//16
+}myMatricies;
 
-	bool spotLight;//4
-	bool pointLight;
-	bool dirLight;
-	bool isRotate; //3+7 packs
-
-
+struct LightingConstant
+{
+	XMFLOAT4 dLightDir;  //16
+	XMFLOAT4 pLightPos;//16
+	XMFLOAT4 sLightDir;//16
+	XMFLOAT4 sLightPos;//16
 	FLOAT innerAngle;//4
 	FLOAT outerAngle;//4
+	FLOAT pLightRadius; //4
+	BOOL lightingMode;//4
 	DOUBLE worldTime;//8//  1 pack
-}myMatricies;
+	XMFLOAT2 padding;
+}myLighting;
 
 //Forward declaration
 void CleanupDevice();
@@ -85,8 +71,26 @@ ID3D11DeviceContext* mContext = nullptr;
 ID3D11RenderTargetView* mRTV = nullptr;
 D3D11_VIEWPORT mPort;
 
+//Lighting
+const XMVECTOR dLightD = { -0.557f,-0.557f,0.557f,1 };
+const XMVECTOR pLightPosD = { -10.0f,1.0f,1.0f,1 };
+const XMVECTOR pLightRadiusD = { 15.0f};
 
+const XMVECTOR sLightDirD = { -0.707f,-0.707f,0.0f,1 };
+const XMVECTOR sLightPosD = { 0.0f,7.0f,0.0f,1 };
+const XMVECTOR innerAngleD = { 0.9f };
+const XMVECTOR outerAngleD = { 0.8f };
 
+//May want to reset;
+XMVECTOR dLight = { -0.557f,-0.557f,0.557f,1 };
+XMVECTOR pLightPos = { -10.0f,1.0f,1.0f,1 };
+XMVECTOR pLightRadius = { 15.0f };
+
+XMVECTOR sLightDir = { -0.707f,-0.707f,0.0f,1 };
+XMVECTOR sLightPos = { 0.0f,7.0f,0.0f,1 };
+XMVECTOR innerAngle = { 0.9f };
+XMVECTOR outerAngle = {0.8f};
+bool flag = true;
 
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
@@ -101,7 +105,7 @@ ID3D11Buffer* vBuff1 = nullptr;
 ID3D11Buffer* iBuff1 = nullptr;
 ID3D11VertexShader* vShader1 = nullptr; //HLSL
 ID3D11PixelShader* pShader1 = nullptr;  //HLSL
-ID3D11Buffer* cBuff1 = nullptr; //Constant Buffer
+ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
 
 
 //Mesh Loader

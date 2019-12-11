@@ -242,13 +242,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hr= mDev->CreateBuffer(&bDesc, nullptr, &cBuff);
 
-   //createSphere(0.2f, 20, 20);
+   //Lighting Buffer
+   bDesc.ByteWidth = sizeof(LightingConstant);
+   hr = mDev->CreateBuffer(&bDesc, nullptr, &cLightBuff);
 
 
 
-   loadObject("Assets/Rock.obj", rockVertex, rockIndices,true);
    ZeroMemory(&bDesc, sizeof(bDesc));
    ZeroMemory(&subData, sizeof(subData));
+
+   loadObject("Assets/Rock.obj", rockVertex, rockIndices, true);
 
    bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
    bDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -257,11 +260,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    bDesc.CPUAccessFlags = 0;
    bDesc.StructureByteStride = 0;
    subData.pSysMem = rockVertex.data();
-
    hr=mDev->CreateBuffer(&bDesc, &subData, &vRockBuff);
 
    //Index Buffer mesh
-
    subData.pSysMem = rockIndices.data();
    bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
    bDesc.ByteWidth = sizeof(unsigned int)*rockIndices.size();
@@ -360,8 +361,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hr = mDev->CreateTexture2D(&zDesc, nullptr, &zBuffer);
    hr = mDev->CreateDepthStencilView(zBuffer, nullptr, &zBufferView);
-   
-
+   //Directional Light
+   XMStoreFloat4(&myLighting.dLightDir, dLightD);
+   //Point Light
+   XMStoreFloat4(&myLighting.pLightPos, pLightPosD);
+   XMStoreFloat(&myLighting.pLightRadius, pLightRadiusD);
+   //Spot Light
+   XMStoreFloat4(&myLighting.sLightPos, sLightPosD);
+   XMStoreFloat4(&myLighting.sLightDir, sLightDirD);
+   XMStoreFloat(&myLighting.innerAngle, innerAngleD);
+   XMStoreFloat(&myLighting.outerAngle, outerAngleD);
+   myLighting.lightingMode = 1;
+   myLighting.worldTime = mTimer.TotalTime();
    // Initialize the world matrices
    XMMATRIX temp = XMMatrixIdentity();
    XMStoreFloat4x4(&myMatricies.g_World,temp);
@@ -474,42 +485,57 @@ void Render()
 	ID3D11Buffer* tempVB[] = { vBuff };
 	mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
 	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
 	mContext->VSSetShader(vShader, 0, 0);
 	mContext->PSSetShader(pShader, 0, 0);
-
 	XMMATRIX temp = XMMatrixIdentity();
 	temp = XMMatrixTranslation(10, 0, 4);
 	XMMATRIX temp2 = XMMatrixRotationY(t);
 	temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
+	if(myLighting.lightingMode == 1)
+	{
+	//Directional Light
+	dLight =XMVector4Transform(dLight,XMMatrixRotationY(XMConvertToRadians(10*delta_time)));
+	XMStoreFloat4(&myLighting.dLightDir, dLight);
+	//Point Light
+	pLightPos = XMVector4Transform(pLightPos, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
+	XMStoreFloat4(&myLighting.pLightPos, pLightPos);
+	//Spot Light 
+	XMFLOAT4 slightTemp;
+	
+	XMStoreFloat4(&slightTemp, sLightPos);
+	if(flag)
+	{
+	sLightPos = XMVector4Transform(sLightPos,XMMatrixTranslation(0,0,10*delta_time));
+	if (slightTemp.z > 10)
+		flag = false;
+	}
+	else
+	{
+	sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, -10 *delta_time));
+	if (slightTemp.z < -10)
+		flag = true;
+	}
+	XMStoreFloat4(&myLighting.sLightPos, sLightPos);
+	sLightDir = XMVector4Transform(sLightDir, XMMatrixRotationY(XMConvertToRadians(10 * -delta_time)));
+	XMStoreFloat4(&myLighting.sLightDir, sLightDir);
+	}
+	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
+	HRESULT hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
+	*((LightingConstant*)(LightingBuffer.pData)) = myLighting;
+	mContext->Unmap(cLightBuff, 0);
+
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-	HRESULT hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
 
-	ID3D11Buffer* constants[] = { cBuff };
-	mContext->VSSetConstantBuffers(0, 1, constants);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+
 
 	mContext->Draw(numVerts, 0);
-
-	//mContext->IASetInputLayout(vLayout);
-	//tempVB[0] = { vBuff1 };
-	//mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
-	//mContext->IASetIndexBuffer(iBuff1, DXGI_FORMAT_R32_UINT, 0);
-	//mContext->VSSetShader(vShader1, 0, 0);
-	//mContext->PSSetShader(pShader1, 0, 0);
-	//temp = XMMatrixIdentity();
-	//temp = XMMatrixTranslation(-5, 5, 4);
-	//XMStoreFloat4x4(&myMatricies.g_World, temp);
-	//hr = mContext->Map(cBuff1, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-	//*((WVP*)(gpuBuffer.pData)) = myMatricies;
-	//mContext->Unmap(cBuff1, 0);
-	//constants[0] = { cBuff1 };
-	//mContext->VSSetConstantBuffers(0, 1, constants);
-	//mContext->DrawIndexed(2280, 0,0);
-
 
 	//Draw Rock
 	ID3D11ShaderResourceView* texView[] = { rockTextureRV };
@@ -820,56 +846,7 @@ void createSphere(float fRadius, UINT uSlices, UINT uStacks)
 	pwFace[2] = (WORD)(uRowB);
 	pwFace += 3;
 
-
-	//D3D11_BUFFER_DESC bDesc;
-	//D3D11_SUBRESOURCE_DATA subData;
-	//ZeroMemory(&bDesc, sizeof(bDesc));
-	//ZeroMemory(&subData, sizeof(subData));
-
-	//bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	//bDesc.ByteWidth = sizeof(SimpleVertex);
-	//bDesc.MiscFlags = 0;
-	//bDesc.CPUAccessFlags = 0;
-	//bDesc.StructureByteStride = 0;
-	//bDesc.Usage = D3D11_USAGE_IMMUTABLE;
-
-	//subData.pSysMem = pVertex;
-
-	//mDev->CreateBuffer(&bDesc, &subData, &vBuff1);
-
-
-	//Index Buffer mesh
-	//bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	//bDesc.ByteWidth = sizeof(UINT)* cFaces * 3;
-	//subData.pSysMem = pwFace;
-	//mDev->CreateBuffer(&bDesc, &subData, &iBuff1);
-
-
-	//mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader1);
-	//mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader1);
-
-	//D3D11_INPUT_ELEMENT_DESC ieDesc[] =
-	//{
-	//	 { "POSITION" , 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//	 { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	//};
-	//mDev->CreateInputLayout(ieDesc, 2, VertexShader, sizeof(VertexShader), &vLayout);
-
-
-	//Constant Buffer
-	//ZeroMemory(&bDesc, sizeof(bDesc));
-
-	//bDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	//bDesc.ByteWidth = sizeof(WVP);
-	//bDesc.MiscFlags = 0;
-	//bDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	//bDesc.StructureByteStride = 0;
-	//bDesc.Usage = D3D11_USAGE_DYNAMIC;
-
-	//mDev->CreateBuffer(&bDesc, nullptr, &cBuff1);
-
-	//delete[] vertices;
-	//delete[] indices;
+	
 }
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies,bool isRHCoord)
 {
@@ -976,7 +953,7 @@ void CleanupDevice()
 
 	if (vBuff1)vBuff1->Release();
 	if (iBuff1)iBuff1->Release();
-	if (cBuff1)cBuff1->Release();
+	if (cLightBuff)cLightBuff->Release();
 	if (vShader1)vShader1->Release();
 	if (pShader1)pShader1->Release();
 	//if (vLayout1)vLayout1->Release();
