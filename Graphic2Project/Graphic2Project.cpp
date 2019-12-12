@@ -246,8 +246,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
    // compile the shaders
-   hr = mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader);
-   hr = mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader);
+   hr = mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &vSkyShader);
+   hr = mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &pSkyShader);
 
    SimpleVertex tri[] = // NDC
    {

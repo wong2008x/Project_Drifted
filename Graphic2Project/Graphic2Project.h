@@ -8,6 +8,8 @@
 #include "PixelMeshShader.csh"
 #include "VertexShader.csh"
 #include "VertexMeshShader.csh"
+#include "SkyPixelShader.csh"
+#include "SkyVertexShader.csh"
 #include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
 #include <vector>

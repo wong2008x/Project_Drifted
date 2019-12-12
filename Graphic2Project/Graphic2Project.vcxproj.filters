@@ -95,10 +95,10 @@
     <FxCompile Include="PixelMeshShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="SkyPixelShader.hlsl">
+    <FxCompile Include="SkyVertexShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
-    <FxCompile Include="SkyVertexShader.hlsl">
+    <FxCompile Include="SkyPixelShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
