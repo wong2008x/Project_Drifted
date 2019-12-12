@@ -179,6 +179,76 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    mPort.MinDepth = 0;
    mPort.MaxDepth = 1;
 
+   static const SkyBox skyBoxVerts[] =
+   {
+	   { XMFLOAT3(-1.0f, -1.0f, -1.0f) },
+	   { XMFLOAT3(-1.0f, -1.0f,  1.0f) },
+	   { XMFLOAT3(-1.0f,  1.0f, -1.0f) },
+	   { XMFLOAT3(-1.0f,  1.0f,  1.0f) },
+	   { XMFLOAT3(1.0f, -1.0f, -1.0f) },
+	   { XMFLOAT3(1.0f, -1.0f,  1.0f) },
+	   { XMFLOAT3(1.0f,  1.0f, -1.0f) },
+	   { XMFLOAT3(1.0f,  1.0f,  1.0f) },
+   };
+   static const unsigned short skyIndices[] =
+   {
+	   3,7,5,
+	   5,1,3,
+
+	   7,6,4,
+	   4,5,7,
+
+	   6,2,0,
+	   0,4,6,
+
+	   2,3,1,
+	   1,0,2,
+
+	   2,6,7,
+	   7,3,2,
+
+	   5,4,0,
+	   0,1,5,
+   };
+   static const D3D11_INPUT_ELEMENT_DESC skyBoxInputDesc[] =
+   {
+	   { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+   };
+   //hr = mDev->CreateInputLayout(skyBoxInputDesc, 1, skyVertexShader, sizeof(skyVertexShader), &skyLayout);
+   D3D11_BUFFER_DESC bDesc;
+   D3D11_SUBRESOURCE_DATA subData;
+   ZeroMemory(&bDesc, sizeof(bDesc));
+   ZeroMemory(&subData, sizeof(subData));
+
+   bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+   bDesc.ByteWidth = sizeof(SkyBox) * ARRAYSIZE(skyBoxVerts);
+   bDesc.MiscFlags = 0;
+   bDesc.CPUAccessFlags = 0;
+   bDesc.StructureByteStride = 0;
+   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+   subData.pSysMem = skyBoxVerts;
+   mDev->CreateBuffer(&bDesc, &subData, &vSkyBuff);
+
+   bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+   bDesc.ByteWidth = sizeof(skyIndices);
+   subData.pSysMem = skyIndices;
+   subData.SysMemPitch = 0;
+   subData.SysMemSlicePitch = 0;
+   mDev->CreateBuffer(&bDesc, &subData, &iSkyBuff);
+
+   D3D11_SAMPLER_DESC sampleDesc;
+   ZeroMemory(&sampleDesc, sizeof(sampleDesc));
+   sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+   sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+   sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+   sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
+
+
+
+   // compile the shaders
+   hr = mDev->CreateVertexShader(VertexShader, sizeof(VertexShader), nullptr, &vShader);
+   hr = mDev->CreatePixelShader(PixelShader, sizeof(PixelShader), nullptr, &pShader);
+
    SimpleVertex tri[] = // NDC
    {
 	   { {0, 1.0f, 0 , 1},  {1, 1, 0 , 1} },
@@ -201,8 +271,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    numVerts = ARRAYSIZE(tri);
 
    //LOAD THE TRI
-   D3D11_BUFFER_DESC bDesc;
-   D3D11_SUBRESOURCE_DATA subData;
    ZeroMemory(&bDesc, sizeof(bDesc));
    ZeroMemory(&subData, sizeof(subData));
 
@@ -281,15 +349,15 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Rock_Diffuse.dds", (ID3D11Resource**)&rockTexture, &rockTextureRV);
 
    // Create the sample state
-   D3D11_SAMPLER_DESC sampDesc = {};
-   sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-   sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-   sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-   sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-   sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-   sampDesc.MinLOD = 0;
-   sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-   hr = mDev->CreateSamplerState(&sampDesc, &rockSamplerState);
+   ZeroMemory(&sampleDesc, sizeof(sampleDesc));
+   sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+   sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+   sampleDesc.MinLOD = 0;
+   sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
+   hr = mDev->CreateSamplerState(&sampleDesc, &rockSamplerState);
    hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vRockLayout);
 
    CD3D11_TEXTURE2D_DESC zDesc;
@@ -326,27 +394,27 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    //Load New Mesh
    hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &vStoneShader);
    hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pStoneShader);
-   D3D11_INPUT_ELEMENT_DESC meshInputDesc2[] =
-   {
-		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-   };
+  // D3D11_INPUT_ELEMENT_DESC meshInputDesc2[] =
+  // {
+		//{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		//{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		//{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+  // };
    // Load the Texture
    hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/StoneHenge.dds", (ID3D11Resource**)&stoneTexture, &stoneTextureRV);
 
    // Create the sample state
-   ZeroMemory(&sampDesc, sizeof(sampDesc));
-   sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-   sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-   sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-   sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-   sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
-   sampDesc.MinLOD = 0;
-   sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
-   hr = mDev->CreateSamplerState(&sampDesc, &stoneSamplerState);
+   ZeroMemory(&sampleDesc, sizeof(sampleDesc));
+   sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+   sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+   sampleDesc.MinLOD = 0;
+   sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
+   hr = mDev->CreateSamplerState(&sampleDesc, &stoneSamplerState);
 
-   hr = mDev->CreateInputLayout(meshInputDesc2, 3, VertexMeshShader, sizeof(VertexMeshShader), &vStoneLayout);
+   hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vStoneLayout);
 
 
    ZeroMemory(&zDesc, sizeof(zDesc));
@@ -951,11 +1019,11 @@ void CleanupDevice()
 	if (pShader)pShader->Release();
 	if (vLayout)vLayout->Release();
 
-	if (vBuff1)vBuff1->Release();
-	if (iBuff1)iBuff1->Release();
+	if (vSkyBuff)vSkyBuff->Release();
+	if (iSkyBuff)iSkyBuff->Release();
 	if (cLightBuff)cLightBuff->Release();
-	if (vShader1)vShader1->Release();
-	if (pShader1)pShader1->Release();
+	if (vSkyShader)vSkyShader->Release();
+	if (pSkyShader)pSkyShader->Release();
 	//if (vLayout1)vLayout1->Release();
 	//rock
 	if (vRockBuff)vRockBuff->Release();

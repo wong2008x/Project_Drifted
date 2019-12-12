@@ -29,6 +29,10 @@ struct SimpleMesh
 	XMFLOAT3 Tex;
 	XMFLOAT3 Norm;
 };
+struct SkyBox
+{
+	XMFLOAT3 Pos;
+};
 
 
 struct WVP
@@ -95,16 +99,19 @@ bool flag = true;
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
 
+//primitive Triangle
 ID3D11Buffer* vBuff = nullptr;
 ID3D11InputLayout* vLayout = nullptr;
 ID3D11VertexShader* vShader = nullptr; //HLSL
 ID3D11PixelShader* pShader = nullptr;  //HLSL
 ID3D11Buffer* cBuff = nullptr; //Constant Buffer
 
-ID3D11Buffer* vBuff1 = nullptr;
-ID3D11Buffer* iBuff1 = nullptr;
-ID3D11VertexShader* vShader1 = nullptr; //HLSL
-ID3D11PixelShader* pShader1 = nullptr;  //HLSL
+//Skybox 
+ID3D11Buffer* vSkyBuff = nullptr;
+ID3D11Buffer* iSkyBuff = nullptr;
+ID3D11VertexShader* vSkyShader = nullptr; //HLSL
+ID3D11PixelShader* pSkyShader = nullptr;  //HLSL
+ID3D11InputLayout* skyLayout = nullptr;
 ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
 
 
