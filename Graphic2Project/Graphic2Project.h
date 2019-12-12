@@ -16,6 +16,7 @@
 #include <string>
 #include <fstream>
 #include "Utillity/XTime.h"
+#include <DirectXColors.h>
 
 using namespace std;
 using namespace DirectX;
@@ -62,20 +63,41 @@ struct LightingConstant
 //Forward declaration
 void CleanupDevice();
 void Render();
+void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer);
 void Update();
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies, bool isRHCoord);
-
+void WindowResize(UINT _width, UINT _height);
 //Global Variable
 unsigned int numVerts;
+
+
 
 XTime mTimer;
 double delta_time = 0;
 float cameraSpeed = 5.f;
+bool multiviewPort = false;
+
+XMMATRIX Rotationx;
+XMMATRIX Rotationy;
+XMMATRIX Rotationz;
+XMVECTOR camPosition;
+XMVECTOR camTarget;
+XMVECTOR camUp;
+XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+XMVECTOR camForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+XMVECTOR camRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+XMVECTOR Eye;
+XMVECTOR At;
+XMVECTOR Up;
+
 ID3D11Device* mDev = nullptr;
 IDXGISwapChain* mSwap = nullptr;
 ID3D11DeviceContext* mContext = nullptr;
 ID3D11RenderTargetView* mRTV = nullptr;
 D3D11_VIEWPORT mPort;
+D3D11_VIEWPORT mFirPort;
+D3D11_VIEWPORT mSecPort;
 
 //Lighting
 const XMVECTOR dLightD = { -0.557f,-0.557f,0.557f,1 };
@@ -114,9 +136,10 @@ ID3D11Buffer* iSkyBuff = nullptr;
 ID3D11VertexShader* vSkyShader = nullptr; //HLSL
 ID3D11PixelShader* pSkyShader = nullptr;  //HLSL
 ID3D11InputLayout* skyLayout = nullptr;
+ID3D11ShaderResourceView* skyBoxTextureRV = nullptr;
+ID3D11SamplerState* skyBoxSamplerState = nullptr;
+
 ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
-
-
 //Mesh Loader
 vector<SimpleMesh> rockVertex;
 vector<unsigned int> rockIndices;
@@ -138,10 +161,15 @@ ID3D11Texture2D* stoneTexture = nullptr;
 ID3D11InputLayout* vStoneLayout = nullptr;
 ID3D11SamplerState* stoneSamplerState= nullptr;
 
+ID3D11Buffer* sphereIndexBuffer = nullptr;
+ID3D11Buffer* sphereVertBuffer = nullptr;
+
+
+
 ID3D11Texture2D* zBuffer = nullptr;
 ID3D11DepthStencilView* zBufferView = nullptr;
 
 float aspectRatio = 1.0f;
 float FOV = 75.0f	; 
 float nPlane = 0.01f;
-float fPlane = 100.0f;
+float fPlane = 1000.0f;

@@ -48,6 +48,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     // Main message loop:
     while (true)//GetMessage(&msg, nullptr, 0, 0))
     {
+		
 		PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE);
         if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
         {
@@ -121,6 +122,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
    
+
    RECT mWinR;
    GetClientRect(hWnd, &mWinR);
 
@@ -179,6 +181,19 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    mPort.MinDepth = 0;
    mPort.MaxDepth = 1;
 
+	mFirPort.Height = swap.BufferDesc.Height;
+	mFirPort.Width = swap.BufferDesc.Width/2; 
+	mFirPort.TopLeftX = mFirPort.TopLeftY = 0;
+	mFirPort.MinDepth = 0; 
+	mFirPort.MaxDepth = 1; 
+
+	mSecPort.Height = swap.BufferDesc.Height;
+	mSecPort.Width = swap.BufferDesc.Width/2;
+	mSecPort.TopLeftX = swap.BufferDesc.Width / 2;
+	mSecPort.TopLeftY = 0;
+	mSecPort.MinDepth = 0;
+	mSecPort.MaxDepth = 1;
+
    static const SkyBox skyBoxVerts[] =
    {
 	   { XMFLOAT3(-1.0f, -1.0f, -1.0f) },
@@ -190,7 +205,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 	   { XMFLOAT3(1.0f,  1.0f, -1.0f) },
 	   { XMFLOAT3(1.0f,  1.0f,  1.0f) },
    };
-   static const unsigned short skyIndices[] =
+   static const unsigned int skyIndices[] =
    {
 	   3,7,5,
 	   5,1,3,
@@ -214,7 +229,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    {
 	   { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
    };
-   //hr = mDev->CreateInputLayout(skyBoxInputDesc, 1, skyVertexShader, sizeof(skyVertexShader), &skyLayout);
+   hr = mDev->CreateInputLayout(skyBoxInputDesc, 1, SkyVertexShader, sizeof(SkyVertexShader), &skyLayout);
    D3D11_BUFFER_DESC bDesc;
    D3D11_SUBRESOURCE_DATA subData;
    ZeroMemory(&bDesc, sizeof(bDesc));
@@ -230,7 +245,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    mDev->CreateBuffer(&bDesc, &subData, &vSkyBuff);
 
    bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-   bDesc.ByteWidth = sizeof(skyIndices);
+   bDesc.ByteWidth = sizeof(unsigned int)*ARRAYSIZE(skyIndices);
    subData.pSysMem = skyIndices;
    subData.SysMemPitch = 0;
    subData.SysMemSlicePitch = 0;
@@ -243,7 +258,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
    sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_MIRROR;
 
-
+   mDev->CreateSamplerState(&sampleDesc, &skyBoxSamplerState);
+   hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/SkyboxOcean.dds", NULL, &skyBoxTextureRV);
 
    // compile the shaders
    hr = mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &vSkyShader);
@@ -429,6 +445,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    hr = mDev->CreateTexture2D(&zDesc, nullptr, &zBuffer);
    hr = mDev->CreateDepthStencilView(zBuffer, nullptr, &zBufferView);
+
    //Directional Light
    XMStoreFloat4(&myLighting.dLightDir, dLightD);
    //Point Light
@@ -446,9 +463,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    XMStoreFloat4x4(&myMatricies.g_World,temp);
 
    // Initialize the view matrix
-   XMVECTOR Eye = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
-   XMVECTOR At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-   XMVECTOR Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    Eye = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
+    At = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+    Up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
    temp = XMMatrixLookAtLH(Eye, At, Up);
    XMStoreFloat4x4(&myMatricies.g_View, temp);
 
@@ -501,6 +518,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+	case WM_SIZE:
+	{
+		UINT width = LOWORD(lParam);
+		UINT height = HIWORD(lParam);
+		WindowResize(width,height);
+		break;
+	}
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
@@ -529,89 +553,132 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 void Render()
 {
-	// Update our time
-	static float t = 0.0f;
+	D3D11_MAPPED_SUBRESOURCE gpuBuffer = {};
+	//HRESULT  hr;
+	//XMMATRIX temp = XMMatrixIdentity();
 
-
-	float color[] = { 0.5, 0.5, 0.5, 1 };
-	mContext->ClearRenderTargetView(mRTV, color);
-
-	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1, 0);
-
-
-	//Setup the pipeline
-	//output merger
-	ID3D11RenderTargetView* tempRTV[] = { mRTV };
-	mContext->OMSetRenderTargets(1, tempRTV, zBufferView);
+	mContext->OMSetRenderTargets(1, &mRTV, zBufferView);
+	mContext->ClearRenderTargetView(mRTV, DirectX::Colors::BurlyWood);
+	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 	// rasterizer
-	mContext->RSSetViewports(1, &mPort);
-	// Input Assembler
 
-	mContext->IASetInputLayout(vLayout);
-	UINT strides[] = { sizeof(SimpleVertex) };
-	UINT offsets[] = { 0 };
-	ID3D11Buffer* tempVB[] = { vBuff };
-	mContext->IASetVertexBuffers(0, 1, tempVB, strides, offsets);
-	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mContext->VSSetShader(vShader, 0, 0);
-	mContext->PSSetShader(pShader, 0, 0);
-	XMMATRIX temp = XMMatrixIdentity();
-	temp = XMMatrixTranslation(10, 0, 4);
-	XMMATRIX temp2 = XMMatrixRotationY(t);
-	temp = XMMatrixMultiply(temp2, temp);
-	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
-	if(myLighting.lightingMode == 1)
+	if (multiviewPort)
 	{
-	//Directional Light
-	dLight =XMVector4Transform(dLight,XMMatrixRotationY(XMConvertToRadians(10*delta_time)));
-	XMStoreFloat4(&myLighting.dLightDir, dLight);
-	//Point Light
-	pLightPos = XMVector4Transform(pLightPos, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
-	XMStoreFloat4(&myLighting.pLightPos, pLightPos);
-	//Spot Light 
-	XMFLOAT4 slightTemp;
-	
-	XMStoreFloat4(&slightTemp, sLightPos);
-	if(flag)
-	{
-	sLightPos = XMVector4Transform(sLightPos,XMMatrixTranslation(0,0,10*delta_time));
-	if (slightTemp.z > 10)
-		flag = false;
+		//aspectRatio = mFirPort.Width/mFirPort.Height;
+		//XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
+		mContext->RSSetViewports(1, &mFirPort);
+		postRender(gpuBuffer);
+		
+
+		mContext->RSSetViewports(1, &mSecPort);
+		postRender(gpuBuffer);
 	}
 	else
 	{
-	sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, -10 *delta_time));
-	if (slightTemp.z < -10)
-		flag = true;
-	}
-	XMStoreFloat4(&myLighting.sLightPos, sLightPos);
-	sLightDir = XMVector4Transform(sLightDir, XMMatrixRotationY(XMConvertToRadians(10 * -delta_time)));
-	XMStoreFloat4(&myLighting.sLightDir, sLightDir);
-	}
-	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
-	HRESULT hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
-	*((LightingConstant*)(LightingBuffer.pData)) = myLighting;
-	mContext->Unmap(cLightBuff, 0);
 
-	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
+		mContext->RSSetViewports(1, &mPort);
+		postRender(gpuBuffer);
+
+	}
+	mSwap->Present(1, 0);
+
+
+}
+void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
+{
+
+	HRESULT  hr;
+	XMMATRIX temp = XMMatrixIdentity();
+
+	UINT skyStrides[] = { sizeof(SkyBox) };
+	UINT skyoffsets[] = { 0 };
+	mContext->PSSetShaderResources(0, 1, &skyBoxTextureRV);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mContext->IASetVertexBuffers(0, 1, &vSkyBuff, skyStrides, skyoffsets);
+	mContext->IASetIndexBuffer(iSkyBuff, DXGI_FORMAT_R32_UINT, 0);
+	mContext->VSSetShader(vSkyShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(pSkyShader, 0, 0);
+	mContext->IASetInputLayout(skyLayout);
+	mContext->PSSetSamplers(0, 1, &skyBoxSamplerState);
+
+	temp = XMMatrixIdentity();
+	temp = XMMatrixMultiply(XMMatrixScaling(200.0f, 200.0f, 200.0f), temp);
+	XMStoreFloat4x4(&myMatricies.g_World, temp);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
+	mContext->DrawIndexed(36, 0, 0);
+	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
+
+
+	UINT strides[] = { sizeof(SimpleVertex) };
+	UINT offsets[] = { 0 };
+	mContext->IASetVertexBuffers(0, 1, &vBuff, strides, offsets);
+	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	mContext->IASetInputLayout(vLayout);
+	mContext->VSSetShader(vShader, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
-	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetShader(pShader, 0, 0);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixTranslation(10, 0, 4);
+	XMMATRIX temp2 = XMMatrixRotationY(delta_time);
+	temp = XMMatrixMultiply(temp2, temp);
+	XMStoreFloat4x4(&myMatricies.g_World, temp);
 
-
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatricies;
+	mContext->Unmap(cBuff, 0);
 	mContext->Draw(numVerts, 0);
 
+
+
+
+	if (myLighting.lightingMode == 1)
+	{
+		//Directional Light
+		dLight = XMVector4Transform(dLight, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
+		XMStoreFloat4(&myLighting.dLightDir, dLight);
+		//Point Light
+		pLightPos = XMVector4Transform(pLightPos, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
+		XMStoreFloat4(&myLighting.pLightPos, pLightPos);
+		//Spot Light 
+		XMFLOAT4 slightTemp;
+
+		XMStoreFloat4(&slightTemp, sLightPos);
+		if (flag)
+		{
+			sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, 10 * delta_time));
+			if (slightTemp.z > 10)
+				flag = false;
+		}
+		else
+		{
+			sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, -10 * delta_time));
+			if (slightTemp.z < -10)
+				flag = true;
+		}
+		XMStoreFloat4(&myLighting.sLightPos, sLightPos);
+		sLightDir = XMVector4Transform(sLightDir, XMMatrixRotationY(XMConvertToRadians(10 * -delta_time)));
+		XMStoreFloat4(&myLighting.sLightDir, sLightDir);
+	}
+	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
+	hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
+	*((LightingConstant*)(LightingBuffer.pData)) = myLighting;
+	mContext->Unmap(cLightBuff, 0);
+
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	//Draw Rock
-	ID3D11ShaderResourceView* texView[] = { rockTextureRV };
-	mContext->PSSetShaderResources(0, 1, texView);
+
+	mContext->PSSetShaderResources(0, 1, &rockTextureRV);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 
 	//Set Pipline
-	UINT mesh_strides[] = { sizeof(_OBJ_VERT_) };
+	UINT mesh_strides[] = { sizeof(SimpleMesh) };
 	UINT mesh_offsets[] = { 0 };
 	ID3D11Buffer* meshVB[] = { vRockBuff };
 	mContext->IASetVertexBuffers(0, 1, meshVB, mesh_strides, mesh_offsets);
@@ -621,7 +688,7 @@ void Render()
 	mContext->IASetInputLayout(vRockLayout);
 
 	temp = XMMatrixIdentity();
-	temp = XMMatrixTranslation(-10,0,-2);
+	temp = XMMatrixTranslation(-10, 0, -2);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
@@ -632,8 +699,7 @@ void Render()
 
 
 	//Draw StoneHenge
-	texView[0] = { stoneTextureRV };
-	mContext->PSSetShaderResources(0, 1, texView);
+	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
 	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
 
 	//Set Pipline
@@ -653,77 +719,65 @@ void Render()
 	mContext->Unmap(cBuff, 0);
 	mContext->DrawIndexed(2532, 0, 0);
 
-	mSwap->Present(1, 0);
+	//mSwap->Present(1, 0);
 }
+
 void Update()
 {
 	
 	delta_time=mTimer.Delta();
-	if (GetAsyncKeyState('W'))
+	if (GetAsyncKeyState('W') )
 	{
-		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, -cameraSpeed * delta_time);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, -cameraSpeed *delta_time);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
-	if (GetAsyncKeyState('S'))
+	if (GetAsyncKeyState('S') )
 	{
-		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, cameraSpeed * delta_time);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, 0.0f, cameraSpeed *delta_time);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
-	if (GetAsyncKeyState('D'))
+	if (GetAsyncKeyState('D') )
 	{
 
-		XMMATRIX translation = XMMatrixTranslation(-cameraSpeed * 2*delta_time, 0.0f, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(-cameraSpeed *delta_time, 0.0f, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
-	if (GetAsyncKeyState('A'))
+	if (GetAsyncKeyState('A') )
 	{
-		XMMATRIX translation = XMMatrixTranslation(cameraSpeed * 2*delta_time, 0.0f, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(cameraSpeed *delta_time, 0.0f, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
-	if (GetAsyncKeyState('X'))
+	if (GetAsyncKeyState('X') )
 	{
 		XMMATRIX translation = XMMatrixTranslation(0.0f, -cameraSpeed * delta_time, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
-	if (GetAsyncKeyState('Q'))
+
+	if (GetAsyncKeyState(VK_SPACE) )
 	{
-		XMMATRIX rotation = XMMatrixRotationY(-cameraSpeed * delta_time);
-		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
-		XMMATRIX result = XMMatrixMultiply(rotation, temp_camera);
-		XMStoreFloat4x4(&myMatricies.g_View, result);
-	}
-	if (GetAsyncKeyState('E'))
-	{
-		XMMATRIX rotation = XMMatrixRotationY(cameraSpeed * delta_time);
-		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
-		XMMATRIX result = XMMatrixMultiply(rotation, temp_camera);
-		XMStoreFloat4x4(&myMatricies.g_View, result);
-	}
-	if (GetAsyncKeyState(VK_SPACE))
-	{
-		XMMATRIX translation = XMMatrixTranslation(0.0f, cameraSpeed * delta_time, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, cameraSpeed *delta_time, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&myMatricies.g_View);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&myMatricies.g_View, result);
 	}
-	if (GetAsyncKeyState(VK_NUMPAD7))
+	if (GetAsyncKeyState(VK_NUMPAD7) )
 	{
 		fPlane+= 5*delta_time;
 
 		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	}
-	if (GetAsyncKeyState(VK_NUMPAD1))
+	if (GetAsyncKeyState(VK_NUMPAD1) )
 	{
 		fPlane -=  10*delta_time;
 		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
@@ -735,7 +789,7 @@ void Update()
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	
 	}
-	if (GetAsyncKeyState(VK_NUMPAD8))
+	if (GetAsyncKeyState(VK_NUMPAD8) )
 	{
 		XMMATRIX temp;
 		FOV += 10*delta_time;
@@ -746,7 +800,7 @@ void Update()
 		temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	}
-	if (GetAsyncKeyState(VK_NUMPAD2))
+	if (GetAsyncKeyState(VK_NUMPAD2) )
 	{
 		XMMATRIX temp;
 		FOV -= 10*delta_time;
@@ -764,7 +818,7 @@ void Update()
 		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	}
-	if (GetAsyncKeyState(VK_NUMPAD3))
+	if (GetAsyncKeyState(VK_NUMPAD3) )
 	{
 		XMMATRIX temp;
 		nPlane -=  delta_time;
@@ -776,155 +830,149 @@ void Update()
 		temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	}
-	if (GetAsyncKeyState(VK_NUMPAD0))
+	if (GetAsyncKeyState(VK_NUMPAD0) & 0x1)
 	{
 		FOV = 75.0f;
 		nPlane = 0.01f;
-		fPlane = 100.0f;
+		fPlane = 200.0f;
 		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 	}
+	if (GetAsyncKeyState(VK_F1) & 0x1)
+	{
+		multiviewPort = !multiviewPort;
+	}
 }
 
-void createSphere(float fRadius, UINT uSlices, UINT uStacks)
+void CreateSphere(int LatLines, int LongLines)
 {
-	UINT cFaces = 2 * (uStacks - 1) * uSlices;
-	UINT cVertices = (uStacks - 1) * uSlices + 2;
+	int NumSphereVertices = ((LatLines - 2) * LongLines) + 2;
+	int NumSphereFaces = ((LatLines - 3) * (LongLines) * 2) + (LongLines * 2);
 
-	SimpleVertex* vertices = new SimpleVertex[cVertices];
+	float sphereYaw = 0.0f;
+	float spherePitch = 0.0f;
 
+	std::vector<SimpleMesh> vertices(NumSphereVertices);
 
-	UINT i, j;
+	XMVECTOR currVertPos = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 
-	const int CACHE_SIZE = 240 * 2;
+	vertices[0].Pos.x = 0.0f;
+	vertices[0].Pos.y = 0.0f;
+	vertices[0].Pos.z = 1.0f;
 
-	// Sin/Cos caches
-	float sinI[CACHE_SIZE], cosI[CACHE_SIZE];
-	float sinJ[CACHE_SIZE], cosJ[CACHE_SIZE];
-
-	for (i = 0; i < uSlices; i++) {
-		sinI[i] = sinf((float)(2.0f * XM_PI * i / uSlices));
-		cosI[i] = cosf((float)(2.0f * XM_PI * i / uSlices));
-		// sincosf( 2.0f * D3DX_PI * i / uSlices, sinI + i, cosI + i );
-	}
-	for (j = 0; j < uStacks; j++) {
-		sinJ[j] = sinf((float)(XM_PI * j / uStacks));
-		cosJ[j] = cosf((float)(XM_PI * j / uStacks));
-		// sincosf( D3DX_PI * j / uStacks, sinJ + j, cosJ + j );
-	}
-
-	// Generate vertices
-	SimpleVertex* pVertex = vertices;
-
-	// +Z pole
-	pVertex->Pos = XMFLOAT4(0.0f, 0.0f, fRadius,1.0f);
-	pVertex->Color = XMFLOAT4(0.0f, 0.0f, 1.0f,1.0f);
-	pVertex++;
-
-	// Stacks
-	for (j = 1; j < uStacks; j++)
+	for (DWORD i = 0; i < LatLines - 2; ++i)
 	{
-		for (i = 0; i < uSlices; i++)
+		spherePitch = (i + 1) * (3.14 / (LatLines - 1));
+		Rotationx = XMMatrixRotationX(spherePitch);
+		for (DWORD j = 0; j < LongLines; ++j)
 		{
-			XMFLOAT3 norm(sinI[i] * sinJ[j], cosI[i] * sinJ[j], cosJ[j]);
-			XMFLOAT4 pos;
-			pos.x = norm.x * fRadius;
-			pos.y = norm.y * fRadius;
-			pos.z = norm.z * fRadius;
-
-			pVertex->Pos = pos; //norm * fRadius;
-			pVertex->Color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-
-			pVertex++;
+			sphereYaw = j * (6.28 / (LongLines));
+			Rotationy = XMMatrixRotationZ(sphereYaw);
+			currVertPos = XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), (Rotationx * Rotationy));
+			currVertPos = XMVector3Normalize(currVertPos);
+			vertices[i * LongLines + j + 1].Pos.x = XMVectorGetX(currVertPos);
+			vertices[i * LongLines + j + 1].Pos.y = XMVectorGetY(currVertPos);
+			vertices[i * LongLines + j + 1].Pos.z = XMVectorGetZ(currVertPos);
 		}
 	}
 
-	// Z- pole
-	pVertex->Pos = XMFLOAT4(0.0f, 0.0f, -fRadius,1.0f);
-	pVertex->Color = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-	pVertex++;
+	vertices[NumSphereVertices - 1].Pos.x = 0.0f;
+	vertices[NumSphereVertices - 1].Pos.y = 0.0f;
+	vertices[NumSphereVertices - 1].Pos.z = -1.0f;
 
 
-	UINT* indices = new UINT[cFaces * 3];
+	D3D11_BUFFER_DESC vertexBufferDesc;
+	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
-	// Generate indices
-	UINT* pwFace = indices;
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	vertexBufferDesc.ByteWidth = sizeof(SimpleMesh) * NumSphereVertices;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vertexBufferDesc.CPUAccessFlags = 0;
+	vertexBufferDesc.MiscFlags = 0;
 
-	// Z+ pole
-	UINT uRowA = 0;
-	UINT uRowB = 1;
+	D3D11_SUBRESOURCE_DATA vertexBufferData;
 
-	for (i = 0; i < uSlices - 1; i++)
+	ZeroMemory(&vertexBufferData, sizeof(vertexBufferData));
+	vertexBufferData.pSysMem = &vertices[0];
+	HRESULT hr = mDev->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &sphereVertBuffer);
+
+
+	std::vector<DWORD> indices(NumSphereFaces * 3);
+
+	int k = 0;
+	for (DWORD l = 0; l < LongLines - 1; ++l)
 	{
-		pwFace[0] = (WORD)(uRowA);
-		pwFace[1] = (WORD)(uRowB + i + 1);
-		pwFace[2] = (WORD)(uRowB + i);
-		pwFace += 3;
+		indices[k] = 0;
+		indices[k + 1] = l + 1;
+		indices[k + 2] = l + 2;
+		k += 3;
 	}
 
-	pwFace[0] = (WORD)(uRowA);
-	pwFace[1] = (WORD)(uRowB);
-	pwFace[2] = (WORD)(uRowB + i);
-	pwFace += 3;
+	indices[k] = 0;
+	indices[k + 1] = LongLines;
+	indices[k + 2] = 1;
+	k += 3;
 
-	// Interior stacks
-	for (j = 1; j < uStacks - 1; j++)
+	for (DWORD i = 0; i < LatLines - 3; ++i)
 	{
-		uRowA = 1 + (j - 1) * uSlices;
-		uRowB = uRowA + uSlices;
-
-		for (i = 0; i < uSlices - 1; i++)
+		for (DWORD j = 0; j < LongLines - 1; ++j)
 		{
-			pwFace[0] = (WORD)(uRowA + i);
-			pwFace[1] = (WORD)(uRowA + i + 1);
-			pwFace[2] = (WORD)(uRowB + i);
-			pwFace += 3;
+			indices[k] = i * LongLines + j + 1;
+			indices[k + 1] = i * LongLines + j + 2;
+			indices[k + 2] = (i + 1) * LongLines + j + 1;
 
-			pwFace[0] = (WORD)(uRowA + i + 1);
-			pwFace[1] = (WORD)(uRowB + i + 1);
-			pwFace[2] = (WORD)(uRowB + i);
-			pwFace += 3;
+			indices[k + 3] = (i + 1) * LongLines + j + 1;
+			indices[k + 4] = i * LongLines + j + 2;
+			indices[k + 5] = (i + 1) * LongLines + j + 2;
+
+			k += 6; // next quad
 		}
 
-		pwFace[0] = (WORD)(uRowA + i);
-		pwFace[1] = (WORD)(uRowA);
-		pwFace[2] = (WORD)(uRowB + i);
-		pwFace += 3;
+		indices[k] = (i * LongLines) + LongLines;
+		indices[k + 1] = (i * LongLines) + 1;
+		indices[k + 2] = ((i + 1) * LongLines) + LongLines;
 
-		pwFace[0] = (WORD)(uRowA);
-		pwFace[1] = (WORD)(uRowB);
-		pwFace[2] = (WORD)(uRowB + i);
-		pwFace += 3;
+		indices[k + 3] = ((i + 1) * LongLines) + LongLines;
+		indices[k + 4] = (i * LongLines) + 1;
+		indices[k + 5] = ((i + 1) * LongLines) + 1;
+
+		k += 6;
 	}
 
-	// Z- pole
-	uRowA = 1 + (uStacks - 2) * uSlices;
-	uRowB = uRowA + uSlices;
-
-	for (i = 0; i < uSlices - 1; i++)
+	for (DWORD l = 0; l < LongLines - 1; ++l)
 	{
-		pwFace[0] = (WORD)(uRowA + i);
-		pwFace[1] = (WORD)(uRowA + i + 1);
-		pwFace[2] = (WORD)(uRowB);
-		pwFace += 3;
+		indices[k] = NumSphereVertices - 1;
+		indices[k + 1] = (NumSphereVertices - 1) - (l + 1);
+		indices[k + 2] = (NumSphereVertices - 1) - (l + 2);
+		k += 3;
 	}
 
-	pwFace[0] = (WORD)(uRowA + i);
-	pwFace[1] = (WORD)(uRowA);
-	pwFace[2] = (WORD)(uRowB);
-	pwFace += 3;
+	indices[k] = NumSphereVertices - 1;
+	indices[k + 1] = (NumSphereVertices - 1) - LongLines;
+	indices[k + 2] = NumSphereVertices - 2;
 
-	
+	D3D11_BUFFER_DESC indexBufferDesc;
+	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
+
+	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	indexBufferDesc.ByteWidth = sizeof(DWORD) * NumSphereFaces * 3;
+	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	indexBufferDesc.CPUAccessFlags = 0;
+	indexBufferDesc.MiscFlags = 0;
+
+	D3D11_SUBRESOURCE_DATA iinitData;
+
+	iinitData.pSysMem = &indices[0];
+	mDev->CreateBuffer(&indexBufferDesc, &iinitData, &sphereIndexBuffer);
+
 }
+
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies,bool isRHCoord)
 {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector<XMFLOAT3> tempVerts;
 	std::vector<XMFLOAT3> tempUVs;
 	std::vector<XMFLOAT3> tempNormals;
-	UINT vertexIndex;
-	UINT UVIndex;
-	UINT normIndex;
 	FILE* file;
     fopen_s(&file,path, "r");
 	if (file == NULL) {
@@ -986,14 +1034,9 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 	{
 
 		SimpleMesh temp;
-		vertexIndex = vertexIndices[i];
-		temp.Pos = tempVerts[vertexIndex - 1];
-
-		UVIndex = uvIndices[i];
-		temp.Tex = tempUVs[UVIndex - 1];
-
-		normIndex = normalIndices[i];
-		temp.Norm = tempNormals[normIndex - 1];
+		temp.Pos = tempVerts[vertexIndices[i] - 1];
+		temp.Tex = tempUVs[uvIndices[i] - 1];
+		temp.Norm = tempNormals[normalIndices[i] - 1];
 		
 		outVertices.push_back(temp);
 		outIndicies.push_back(i);
@@ -1001,7 +1044,14 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 
 	return true;
 }
+void WindowResize(UINT _width, UINT _height)
+{
 
+	aspectRatio = _width/(float)_height;
+	if (multiviewPort)
+		aspectRatio = (_width / 2) / (float)_height;
+	XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
+}
 
 void CleanupDevice()
 {
@@ -1012,19 +1062,23 @@ void CleanupDevice()
 
 	if (zBuffer)zBuffer->Release();
 	if (zBufferView)zBufferView->Release();
+	if (cLightBuff)cLightBuff->Release();
+	if (cBuff)cBuff->Release();
 
 	if(vBuff)vBuff->Release();
-	if(cBuff)cBuff->Release();
 	if (vShader)vShader->Release();
 	if (pShader)pShader->Release();
 	if (vLayout)vLayout->Release();
 
+	//skybox
 	if (vSkyBuff)vSkyBuff->Release();
 	if (iSkyBuff)iSkyBuff->Release();
-	if (cLightBuff)cLightBuff->Release();
 	if (vSkyShader)vSkyShader->Release();
 	if (pSkyShader)pSkyShader->Release();
-	//if (vLayout1)vLayout1->Release();
+	if (skyLayout)skyLayout->Release();
+	if (skyBoxTextureRV)skyBoxTextureRV->Release();
+	if (skyBoxSamplerState)skyBoxSamplerState->Release();
+
 	//rock
 	if (vRockBuff)vRockBuff->Release();
 	if (iRockBuff)iRockBuff->Release();
