@@ -65,6 +65,7 @@ void CleanupDevice();
 void Render();
 void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer);
 void Update();
+void UpdateCamera();
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies, bool isRHCoord);
 void WindowResize(UINT _width, UINT _height);
 //Global Variable
@@ -77,19 +78,10 @@ double delta_time = 0;
 float cameraSpeed = 5.f;
 bool multiviewPort = false;
 
-XMMATRIX Rotationx;
-XMMATRIX Rotationy;
-XMMATRIX Rotationz;
-XMVECTOR camPosition;
-XMVECTOR camTarget;
-XMVECTOR camUp;
-XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-XMVECTOR camForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-XMVECTOR camRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-XMVECTOR Eye;
-XMVECTOR At;
-XMVECTOR Up;
+
+
+HWND mWindow;
+RECT mWinR;
 
 ID3D11Device* mDev = nullptr;
 IDXGISwapChain* mSwap = nullptr;
@@ -99,17 +91,9 @@ D3D11_VIEWPORT mPort;
 D3D11_VIEWPORT mFirPort;
 D3D11_VIEWPORT mSecPort;
 
-//Lighting
-const XMVECTOR dLightD = { -0.557f,-0.557f,0.557f,1 };
-const XMVECTOR pLightPosD = { -10.0f,1.0f,1.0f,1 };
-const XMVECTOR pLightRadiusD = { 15.0f};
 
-const XMVECTOR sLightDirD = { -0.707f,-0.707f,0.0f,1 };
-const XMVECTOR sLightPosD = { 0.0f,7.0f,0.0f,1 };
-const XMVECTOR innerAngleD = { 0.9f };
-const XMVECTOR outerAngleD = { 0.8f };
 
-//May want to reset;
+//Lighting;
 XMVECTOR dLight = { -0.557f,-0.557f,0.557f,1 };
 XMVECTOR pLightPos = { -10.0f,1.0f,1.0f,1 };
 XMVECTOR pLightRadius = { 15.0f };
@@ -173,3 +157,32 @@ float aspectRatio = 1.0f;
 float FOV = 75.0f	; 
 float nPlane = 0.01f;
 float fPlane = 1000.0f;
+
+
+//Camera
+
+POINT lastPos{ -1,-1 };
+POINT CurPos{ -1,-1 };
+
+XMMATRIX camRotationMatrix;
+XMMATRIX Rotationx;
+XMMATRIX Rotationy;
+XMMATRIX Rotationz;
+XMVECTOR camPosition;
+XMVECTOR camTarget;
+XMVECTOR camUp;
+XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+XMVECTOR camForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+XMVECTOR camRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+float moveLeftRight = 0.0f;
+float moveBackForward = 0.0f;
+
+float camYaw = 0.0f;
+float camPitch = 0.0f;
+
+
+//
+XMMATRIX Rotation;
+XMMATRIX Scale;
+XMMATRIX Translation;
