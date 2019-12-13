@@ -22,7 +22,7 @@ cbuffer ConstantBuffer	 : register(b0)
 }
 cbuffer ConstantTimer	 : register(b1)
 {
-	float timer;
+	double timer;
 }
 
 OutputVertex main(InputStruct input)

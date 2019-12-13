@@ -330,7 +330,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    bDesc.ByteWidth = sizeof(LightingConstant);
    hr = mDev->CreateBuffer(&bDesc, nullptr, &cLightBuff);
 
-   bDesc.ByteWidth = sizeof(float)*4;
+   bDesc.ByteWidth = sizeof(double)*2;
    hr = mDev->CreateBuffer(&bDesc, nullptr, &timerBuff);
 
 
@@ -486,7 +486,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    XMStoreFloat(&myLighting.innerAngle, innerAngle);
    XMStoreFloat(&myLighting.outerAngle, outerAngle);
    myLighting.lightingMode = 1;
-   myLighting.worldTime = mTimer.TotalTime();
    // Initialize the world matrices
    XMMATRIX temp = XMMatrixIdentity();
    XMStoreFloat4x4(&myMatricies.g_World,temp);
@@ -632,11 +631,10 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	temp = XMMatrixIdentity();
 
 	//Define sphereWorld's world space matrix
-	XMMATRIX Scale = XMMatrixScaling(5.0f, 5.0f, 5.0f);
+	Scale = XMMatrixScaling(5.0f, 5.0f, 5.0f);
 	//Make sure the sphere is always centered around camera
-	XMMATRIX Translation = XMMatrixTranslation(XMVectorGetX(camPosition), XMVectorGetY(camPosition), XMVectorGetZ(camPosition));
-	temp = Scale*Translation;
-	XMStoreFloat4x4(&myMatricies.g_World, temp);
+	Translation = XMMatrixTranslation(XMVectorGetX(camPosition), XMVectorGetY(camPosition), XMVectorGetZ(camPosition));
+	XMStoreFloat4x4(&myMatricies.g_World, Scale * Translation);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
@@ -659,7 +657,7 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	XMMATRIX temp2 = XMMatrixRotationY(delta_time);
 	temp = XMMatrixMultiply(temp2, temp);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
-
+	trianglePos={ myMatricies.g_World._41, myMatricies.g_World._42, myMatricies.g_World._43, myMatricies.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
@@ -704,8 +702,7 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	
 	//Draw Rock
 
-	mContext->PSSetShaderResources(0, 1, &rockTextureRV);
-	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	
 
 	//Set Pipline
 	UINT mesh_strides[] = { sizeof(SimpleMesh) };
@@ -717,10 +714,12 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	mContext->PSSetShader(pRockShader, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	mContext->IASetInputLayout(vRockLayout);
-
+	mContext->PSSetShaderResources(0, 1, &rockTextureRV);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
 	temp = XMMatrixTranslation(-10, 0, -2);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
+	rockPos = { myMatricies.g_World._41,myMatricies.g_World._42,myMatricies.g_World._43,myMatricies.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
@@ -740,16 +739,17 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	temp = XMMatrixIdentity();
 	temp = XMMatrixTranslation(10, 5, -2);
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
+	flagPos= { myMatricies.g_World._41, myMatricies.g_World._42, myMatricies.g_World._43, myMatricies.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
 
 	
-	totalTime[0] = (float)mTimer.TotalTime();
+	totalTime[0] = mTimer.TotalTime();
 	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
 	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
 	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
-	memcpy(mapTimeSubresource.pData, totalTime, sizeof(float) * 4);
+	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
 	mContext->Unmap(timerBuff, 0);
 
 	mContext->DrawIndexed(flagIndices.size(), 0, 0);
@@ -770,6 +770,7 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 
 	temp = XMMatrixIdentity();
 	XMStoreFloat4x4(&myMatricies.g_World, temp);
+	stonePos= { myMatricies.g_World._41, myMatricies.g_World._42, myMatricies.g_World._43, myMatricies.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatricies;
 	mContext->Unmap(cBuff, 0);
@@ -794,7 +795,25 @@ void UpdateCamera()
 	moveBackForward = 0.0f;
 
 	camTarget = camPosition + camTarget;
-
+	if (cameraReset)
+	{
+		camPosition = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
+		camTarget = XMVectorSet(-10.0f, 1.0f, 0.0f, 0.0f);
+		camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+		cameraReset = !cameraReset;
+	}
+	if (lookAT)
+	{
+		if (GetAsyncKeyState(VK_UP)&0x1)
+		{
+			if (curObj < objPos.size())
+			curObj++;
+			if (curObj == objPos.size())
+				curObj = 0;
+		}
+		
+		camTarget = XMLoadFloat4(&objPos[curObj]);
+	}
 	XMStoreFloat4x4(&myMatricies.g_View, XMMatrixLookAtLH(camPosition, camTarget, camUp));
 	
 }
@@ -889,16 +908,35 @@ void Update()
 		XMMATRIX temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
 		XMStoreFloat4x4(&myMatricies.g_Projection, temp);
 
-		camPosition = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
-		camTarget = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-		camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-		temp = XMMatrixLookAtLH(camPosition, camTarget, camUp);
-		XMStoreFloat4x4(&myMatricies.g_View, temp);
+		cameraReset = true;
+
 	}
 	if (GetAsyncKeyState(VK_F1) & 0x1)
 	{
+		GetClientRect(mWindow, &mWinR);
+		if(multiviewPort)
+		{
+			aspectRatio = (mWinR.right - mWinR.left)/2.0f / (mWinR.bottom - mWinR.top);
+		}
+		else
+		{
+			aspectRatio = (mWinR.right - mWinR.left) /(mWinR.bottom - mWinR.top);
+		}
+	
 		multiviewPort = !multiviewPort;
 	}
+	if (GetAsyncKeyState('V') & 0x1)
+	{
+		lookAT = !lookAT;
+		if (objPos.size() < 4)
+		{
+			objPos.push_back(trianglePos);
+			objPos.push_back(rockPos);
+			objPos.push_back(flagPos);
+			objPos.push_back(stonePos);
+		}
+	}
+
 	GetCursorPos(&CurPos);
 
 	if (GetAsyncKeyState(VK_RBUTTON) && (lastPos.x != CurPos.x || lastPos.y != CurPos.y))

@@ -22,8 +22,6 @@ cbuffer LightingConstant :register(b0)
 	float outerAngle;//4
 	float pLightRadius;//4
 	int LightingMode;//4
-	double worldTime;//8
-	float2 padding;
 }
 static const float4 diffuseColor = { 1.0f, 1.0f, 0.878f, 1.0f };
 static const float4 pointLColor = { 0.9f,0.0f,0.0f,1.0f };

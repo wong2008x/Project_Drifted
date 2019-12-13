@@ -57,8 +57,6 @@ struct LightingConstant
 	FLOAT outerAngle;//4
 	FLOAT pLightRadius; //4
 	BOOL lightingMode;//4
-	DOUBLE worldTime;//8//  1 pack
-	XMFLOAT2 padding;
 }myLighting;
 
 
@@ -77,10 +75,10 @@ unsigned int numVerts;
 
 
 XTime mTimer;
-float totalTime[4];
+double totalTime[2];
 double delta_time = 0;
 float cameraSpeed = 5.f;
-bool multiviewPort = false;
+bool multiviewPort = true;
 
 
 
@@ -111,13 +109,17 @@ bool flag = true;
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
 D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
 
+
+ID3D11Buffer* cBuff = nullptr; //Constant Buffer
+ID3D11Buffer* timerBuff = nullptr; //Constant Buffer
+ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
 //primitive Triangle
 ID3D11Buffer* vBuff = nullptr;
 ID3D11InputLayout* vLayout = nullptr;
 ID3D11VertexShader* vShader = nullptr; //HLSL
 ID3D11PixelShader* pShader = nullptr;  //HLSL
-ID3D11Buffer* cBuff = nullptr; //Constant Buffer
-ID3D11Buffer* timerBuff = nullptr; //Constant Buffer
+
+XMFLOAT4 trianglePos;
 
 //Skybox 
 ID3D11Buffer* vSkyBuff = nullptr;
@@ -128,7 +130,6 @@ ID3D11InputLayout* skyLayout = nullptr;
 ID3D11ShaderResourceView* skyBoxTextureRV = nullptr;
 ID3D11SamplerState* skyBoxSamplerState = nullptr;
 
-ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
 //Mesh Loader
 vector<SimpleMesh> rockVertex;
 vector<unsigned int> rockIndices;
@@ -140,7 +141,7 @@ ID3D11ShaderResourceView* rockTextureRV = nullptr;
 ID3D11Texture2D* rockTexture = nullptr;
 ID3D11InputLayout* vRockLayout = nullptr;
 ID3D11SamplerState* rockSamplerState = nullptr;
-
+XMFLOAT4 rockPos;
 //Flag 
 vector<SimpleMesh> flagVertex;
 vector<unsigned int> flagIndices;
@@ -152,6 +153,9 @@ ID3D11ShaderResourceView* flagTextureRV = nullptr;
 ID3D11Texture2D* flagTexture = nullptr;
 ID3D11InputLayout* vFlagLayout = nullptr;
 ID3D11SamplerState* flagSamplerState = nullptr;
+XMFLOAT4 flagPos;
+
+
 
 ID3D11Buffer* vStoneBuff = nullptr;
 ID3D11Buffer* iStoneBuff = nullptr;
@@ -161,12 +165,13 @@ ID3D11ShaderResourceView* stoneTextureRV = nullptr;
 ID3D11Texture2D* stoneTexture = nullptr;
 ID3D11InputLayout* vStoneLayout = nullptr;
 ID3D11SamplerState* stoneSamplerState= nullptr;
+XMFLOAT4 stonePos;
 
 ID3D11Buffer* sphereIndexBuffer = nullptr;
 ID3D11Buffer* sphereVertBuffer = nullptr;
 
 
-
+vector<XMFLOAT4> objPos;
 ID3D11Texture2D* zBuffer = nullptr;
 ID3D11DepthStencilView* zBufferView = nullptr;
 
@@ -192,12 +197,14 @@ XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 XMVECTOR camForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 XMVECTOR camRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
+
 float moveLeftRight = 0.0f;
 float moveBackForward = 0.0f;
-
 float camYaw = 0.0f;
 float camPitch = 0.0f;
-
+bool cameraReset;
+bool lookAT;
+unsigned int curObj = 0;
 
 //
 XMMATRIX Rotation;
