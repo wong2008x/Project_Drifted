@@ -81,6 +81,12 @@
     <Image Include="Assets\Textures\StoneHenge.dds">
       <Filter>Assets\Textures</Filter>
     </Image>
+    <Image Include="Assets\Textures\SkyboxOcean.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
+    <Image Include="Assets\Textures\Flag.dds">
+      <Filter>Assets\Textures</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="VertexMeshShader.hlsl">
@@ -99,6 +105,9 @@
       <Filter>Shaders</Filter>
     </FxCompile>
     <FxCompile Include="SkyPixelShader.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="VertexWaveShader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>

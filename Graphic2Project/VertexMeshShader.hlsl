@@ -33,7 +33,6 @@ OutputVertex main(InputStruct input)
 	//for lighting
 	output.PosW = output.Pos.xyz;
 	output.Norm = mul(World, float4(input.Norm, 0)).xyz;
-
 	
 	output.Pos = mul(View, output.Pos );
 	output.Pos = mul(Projection, output.Pos );

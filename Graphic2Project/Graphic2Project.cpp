@@ -59,6 +59,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 			break;
 		
 		mTimer.Signal();
+		
 		Update();
 		Render();
 
@@ -329,6 +330,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    bDesc.ByteWidth = sizeof(LightingConstant);
    hr = mDev->CreateBuffer(&bDesc, nullptr, &cLightBuff);
 
+   bDesc.ByteWidth = sizeof(float)*4;
+   hr = mDev->CreateBuffer(&bDesc, nullptr, &timerBuff);
+
 
 
    ZeroMemory(&bDesc, sizeof(bDesc));
@@ -375,16 +379,44 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreateSamplerState(&sampleDesc, &rockSamplerState);
    hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vRockLayout);
 
-   CD3D11_TEXTURE2D_DESC zDesc;
-   ZeroMemory(&zDesc, sizeof(zDesc));
-   zDesc.ArraySize = 1;
-   zDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-   zDesc.Width = swap.BufferDesc.Width;
-   zDesc.Height = swap.BufferDesc.Height;
-   zDesc.Format = DXGI_FORMAT_D32_FLOAT;
-   zDesc.Usage = D3D11_USAGE_DEFAULT;
-   zDesc.MipLevels = 1;
-   zDesc.SampleDesc.Count = 1;
+
+
+
+   //Load Flag
+   loadObject("Assets/Flag.obj", flagVertex, flagIndices, true);
+
+   bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+   bDesc.ByteWidth = sizeof(SimpleMesh)*flagVertex.size();
+   bDesc.MiscFlags = 0;
+   bDesc.CPUAccessFlags = 0;
+   bDesc.StructureByteStride = 0;
+   subData.pSysMem = flagVertex.data();
+   hr=mDev->CreateBuffer(&bDesc, &subData, &vFlagBuff);
+
+   //Index Buffer mesh
+   subData.pSysMem = flagIndices.data();
+   bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+   bDesc.ByteWidth = sizeof(unsigned int)*flagIndices.size();
+   hr = mDev->CreateBuffer(&bDesc, &subData, &iFlagBuff);
+
+   //Load New Mesh
+   hr = mDev->CreateVertexShader(VertexWaveShader, sizeof(VertexWaveShader), nullptr, &vFlagShader);
+   hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pFlagShader);
+
+   hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Flag.dds", (ID3D11Resource**)&flagTexture, &flagTextureRV);
+
+   // Create the sample state
+   ZeroMemory(&sampleDesc, sizeof(sampleDesc));
+   sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+   sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+   sampleDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+   sampleDesc.MinLOD = 0;
+   sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
+   hr = mDev->CreateSamplerState(&sampleDesc, &flagSamplerState);
+   hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vFlagLayout);
 
    //Load StoneHenge Mesh
 
@@ -409,12 +441,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    //Load New Mesh
    hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &vStoneShader);
    hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pStoneShader);
-  // D3D11_INPUT_ELEMENT_DESC meshInputDesc2[] =
-  // {
-		//{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		//{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		//{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-  // };
+
+
    // Load the Texture
    hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/StoneHenge.dds", (ID3D11Resource**)&stoneTexture, &stoneTextureRV);
 
@@ -432,6 +460,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vStoneLayout);
 
 
+
+   CD3D11_TEXTURE2D_DESC zDesc;
    ZeroMemory(&zDesc, sizeof(zDesc));
    zDesc.ArraySize = 1;
    zDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
@@ -564,12 +594,8 @@ void Render()
 
 	if (multiviewPort)
 	{
-		//aspectRatio = mFirPort.Width/mFirPort.Height;
-		//XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
 		mContext->RSSetViewports(1, &mFirPort);
 		postRender(gpuBuffer);
-		
-
 		mContext->RSSetViewports(1, &mSecPort);
 		postRender(gpuBuffer);
 	}
@@ -675,7 +701,7 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	*((LightingConstant*)(LightingBuffer.pData)) = myLighting;
 	mContext->Unmap(cLightBuff, 0);
 
-	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	
 	//Draw Rock
 
 	mContext->PSSetShaderResources(0, 1, &rockTextureRV);
@@ -684,11 +710,12 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	//Set Pipline
 	UINT mesh_strides[] = { sizeof(SimpleMesh) };
 	UINT mesh_offsets[] = { 0 };
-	ID3D11Buffer* meshVB[] = { vRockBuff };
-	mContext->IASetVertexBuffers(0, 1, meshVB, mesh_strides, mesh_offsets);
+	mContext->IASetVertexBuffers(0, 1, &vRockBuff, mesh_strides, mesh_offsets);
 	mContext->IASetIndexBuffer(iRockBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vRockShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(pRockShader, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	mContext->IASetInputLayout(vRockLayout);
 
 	temp = XMMatrixIdentity();
@@ -700,6 +727,32 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	mContext->DrawIndexed(rockIndices.size(), 0, 0);
 
 
+	mesh_strides[0] = { sizeof(SimpleMesh) };
+	 mesh_offsets[0] = { 0 };
+	mContext->IASetVertexBuffers(0, 1, &vFlagBuff, mesh_strides, mesh_offsets);
+	mContext->IASetIndexBuffer(iFlagBuff, DXGI_FORMAT_R32_UINT, 0);
+	mContext->VSSetShader(vFlagShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->VSSetConstantBuffers(1, 1, &timerBuff);
+	mContext->PSSetShader(pFlagShader, 0, 0);
+	mContext->IASetInputLayout(vFlagLayout);
+
+	temp = XMMatrixIdentity();
+	temp = XMMatrixTranslation(10, 5, -2);
+	XMStoreFloat4x4(&myMatricies.g_World, temp);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatricies;
+	mContext->Unmap(cBuff, 0);
+
+	
+	totalTime[0] = (float)mTimer.TotalTime();
+	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
+	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
+	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
+	memcpy(mapTimeSubresource.pData, totalTime, sizeof(float) * 4);
+	mContext->Unmap(timerBuff, 0);
+
+	mContext->DrawIndexed(flagIndices.size(), 0, 0);
 
 
 	//Draw StoneHenge
@@ -709,8 +762,7 @@ void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer)
 	//Set Pipline
 	mesh_strides[0] = { sizeof(_OBJ_VERT_) };
 	mesh_offsets[0] = { 0 };
-	meshVB[0] = { vStoneBuff };
-	mContext->IASetVertexBuffers(0, 1, meshVB, mesh_strides, mesh_offsets);
+	mContext->IASetVertexBuffers(0, 1, &vStoneBuff, mesh_strides, mesh_offsets);
 	mContext->IASetIndexBuffer(iStoneBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vStoneShader, 0, 0);
 	mContext->PSSetShader(pStoneShader, 0, 0);
@@ -750,22 +802,23 @@ void Update()
 {
 
 	delta_time=mTimer.Delta();
+
 	if (GetAsyncKeyState('W') )
 	{
-		moveBackForward += cameraSpeed * 10*delta_time;
+		moveBackForward += cameraSpeed * 5*delta_time;
 	}
 	if (GetAsyncKeyState('S') )
 	{
-		moveBackForward -= cameraSpeed * 10*delta_time;
+		moveBackForward -= cameraSpeed * 5*delta_time;
 	}
 	if (GetAsyncKeyState('D') )
 	{
 
-		moveLeftRight += cameraSpeed * 10*delta_time;
+		moveLeftRight += cameraSpeed * 5*delta_time;
 	}
 	if (GetAsyncKeyState('A') )
 	{
-		moveLeftRight -= cameraSpeed*10*delta_time;
+		moveLeftRight -= cameraSpeed*5*delta_time;
 	}
 
 	if (GetAsyncKeyState(VK_NUMPAD7) )
@@ -887,7 +940,7 @@ void CreateSphere(int LatLines, int LongLines)
 	float sphereYaw = 0.0f;
 	float spherePitch = 0.0f;
 
-	std::vector<SimpleMesh> vertices(NumSphereVertices);
+	std::vector<SimpleVertex> vertices(NumSphereVertices);
 
 	XMVECTOR currVertPos = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
 
@@ -920,7 +973,7 @@ void CreateSphere(int LatLines, int LongLines)
 	ZeroMemory(&vertexBufferDesc, sizeof(vertexBufferDesc));
 
 	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	vertexBufferDesc.ByteWidth = sizeof(SimpleMesh) * NumSphereVertices;
+	vertexBufferDesc.ByteWidth = sizeof(SimpleVertex) * NumSphereVertices;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	vertexBufferDesc.CPUAccessFlags = 0;
 	vertexBufferDesc.MiscFlags = 0;
@@ -1099,6 +1152,8 @@ void CleanupDevice()
 	if (zBufferView)zBufferView->Release();
 	if (cLightBuff)cLightBuff->Release();
 	if (cBuff)cBuff->Release();
+	if (timerBuff)timerBuff->Release();
+
 
 	if(vBuff)vBuff->Release();
 	if (vShader)vShader->Release();
@@ -1124,6 +1179,16 @@ void CleanupDevice()
 	if (rockTexture)rockTexture->Release();
 	if (vRockLayout)vRockLayout->Release();
 
+
+	//flag
+	if (vFlagBuff)vFlagBuff->Release();
+	if (iFlagBuff) iFlagBuff->Release();
+	if(vFlagShader)		 vFlagShader->Release();
+	if (pFlagShader)		  pFlagShader->Release();
+	if (flagTextureRV)	 flagTextureRV ->Release();
+	if (flagTexture)		flagTexture ->Release();
+	if (vFlagLayout)		  vFlagLayout ->Release();
+	if (flagSamplerState)	   flagSamplerState ->Release();
 	//stone
 	if (vStoneBuff)vStoneBuff->Release();
 	if (iStoneBuff)iStoneBuff->Release();

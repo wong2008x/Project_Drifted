@@ -8,6 +8,7 @@
 #include "PixelMeshShader.csh"
 #include "VertexShader.csh"
 #include "VertexMeshShader.csh"
+#include "VertexWaveShader.csh"
 #include "SkyPixelShader.csh"
 #include "SkyVertexShader.csh"
 #include "Assets/StoneHenge.h"	
@@ -60,6 +61,8 @@ struct LightingConstant
 	XMFLOAT2 padding;
 }myLighting;
 
+
+
 //Forward declaration
 void CleanupDevice();
 void Render();
@@ -74,6 +77,7 @@ unsigned int numVerts;
 
 
 XTime mTimer;
+float totalTime[4];
 double delta_time = 0;
 float cameraSpeed = 5.f;
 bool multiviewPort = false;
@@ -113,6 +117,7 @@ ID3D11InputLayout* vLayout = nullptr;
 ID3D11VertexShader* vShader = nullptr; //HLSL
 ID3D11PixelShader* pShader = nullptr;  //HLSL
 ID3D11Buffer* cBuff = nullptr; //Constant Buffer
+ID3D11Buffer* timerBuff = nullptr; //Constant Buffer
 
 //Skybox 
 ID3D11Buffer* vSkyBuff = nullptr;
@@ -135,6 +140,18 @@ ID3D11ShaderResourceView* rockTextureRV = nullptr;
 ID3D11Texture2D* rockTexture = nullptr;
 ID3D11InputLayout* vRockLayout = nullptr;
 ID3D11SamplerState* rockSamplerState = nullptr;
+
+//Flag 
+vector<SimpleMesh> flagVertex;
+vector<unsigned int> flagIndices;
+ID3D11Buffer* vFlagBuff = nullptr;
+ID3D11Buffer* iFlagBuff = nullptr;
+ID3D11VertexShader* vFlagShader = nullptr;//HLSL
+ID3D11PixelShader* pFlagShader = nullptr;
+ID3D11ShaderResourceView* flagTextureRV = nullptr;
+ID3D11Texture2D* flagTexture = nullptr;
+ID3D11InputLayout* vFlagLayout = nullptr;
+ID3D11SamplerState* flagSamplerState = nullptr;
 
 ID3D11Buffer* vStoneBuff = nullptr;
 ID3D11Buffer* iStoneBuff = nullptr;
