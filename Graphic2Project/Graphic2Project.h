@@ -2,77 +2,32 @@
 
 #include "resource.h"
 #include <d3d11.h>
-#include <directxmath.h>
 #pragma comment(lib,"d3d11.lib")
-#include "PixelShader.csh"
-#include "PixelMeshShader.csh"
-#include "VertexShader.csh"
-#include "VertexMeshShader.csh"
-#include "VertexWaveShader.csh"
-#include "SkyPixelShader.csh"
-#include "SkyVertexShader.csh"
+#include "Shader.h"
+#include <vector>
+#include <fstream>
+#include "Camera.h"
 #include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
-#include <vector>
-#include <string>
-#include <fstream>
 #include "Utillity/XTime.h"
-#include <DirectXColors.h>
+#include "Include.h"
 
 using namespace std;
-using namespace DirectX;
-
-struct SimpleVertex
-{
-	XMFLOAT4 Pos;
-	XMFLOAT4 Color;
-};
-struct SimpleMesh
-{
-	XMFLOAT3 Pos;
-	XMFLOAT3 Tex;
-	XMFLOAT3 Norm;
-};
-struct SkyBox
-{
-	XMFLOAT3 Pos;
-};
-
-
-struct WVP
-{
-	XMFLOAT4X4                g_World;   //64
-	XMFLOAT4X4                g_View;    //64
-	XMFLOAT4X4                g_Projection; //64
-
-}myMatricies;
-
-struct LightingConstant
-{
-	XMFLOAT4 dLightDir;  //16
-	XMFLOAT4 pLightPos;//16
-	XMFLOAT4 sLightDir;//16
-	XMFLOAT4 sLightPos;//16
-	FLOAT innerAngle;//4
-	FLOAT outerAngle;//4
-	FLOAT pLightRadius; //4
-	BOOL lightingMode;//4
-}myLighting;
-
 
 
 //Forward declaration
 void CleanupDevice();
 void Render();
-void postRender(D3D11_MAPPED_SUBRESOURCE gpuBuffer);
+void postRender(WVP myMatrix);
+void ThemeTwo(WVP myMatrix);
 void Update();
-void UpdateCamera();
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies, bool isRHCoord);
 void WindowResize(UINT _width, UINT _height);
+
+
+
 //Global Variable
 unsigned int numVerts;
-
-
 
 XTime mTimer;
 double totalTime[2];
@@ -118,7 +73,6 @@ ID3D11Buffer* vBuff = nullptr;
 ID3D11InputLayout* vLayout = nullptr;
 ID3D11VertexShader* vShader = nullptr; //HLSL
 ID3D11PixelShader* pShader = nullptr;  //HLSL
-
 XMFLOAT4 trianglePos;
 
 //Skybox 
@@ -185,28 +139,26 @@ float fPlane = 1000.0f;
 
 POINT lastPos{ -1,-1 };
 POINT CurPos{ -1,-1 };
+Camera* curCamera;
+Camera firstCam;
+Camera secCam;
+XMFLOAT4 camPos;
 
-XMMATRIX camRotationMatrix;
-XMMATRIX Rotationx;
-XMMATRIX Rotationy;
-XMMATRIX Rotationz;
-XMVECTOR camPosition;
-XMVECTOR camTarget;
-XMVECTOR camUp;
-XMVECTOR DefaultForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-XMVECTOR DefaultRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
-XMVECTOR camForward = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-XMVECTOR camRight = XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f);
 
-float moveLeftRight = 0.0f;
-float moveBackForward = 0.0f;
-float camYaw = 0.0f;
-float camPitch = 0.0f;
-bool cameraReset;
+
+
 bool lookAT;
 unsigned int curObj = 0;
 
 //
+XMMATRIX Rotationx;
+XMMATRIX Rotationy;
+XMMATRIX Rotationz;
 XMMATRIX Rotation;
 XMMATRIX Scale;
 XMMATRIX Translation;
+
+LightingConstant myLighting;
+
+WVP myMatricies;
+WVP mySecWorld;

@@ -30,11 +30,10 @@ OutputVertex main(InputStruct input)
 	OutputVertex output = (OutputVertex)0;
 	output.Pos = float4(input.Pos, 1);
 
-	float multiplyValue = 1.2f+abs(sin(timer * 5 + output.Pos.y)); //how much we want to multiply our vertex
+	float multiplyValue = 0.8f+0.5f*abs(cos(timer * 2.5f + output.Pos.y)); //how much we want to multiply our vertex
 	output.Pos.x *= multiplyValue ;
 	output.Pos.z *= multiplyValue ;
-	/*output.Pos.x = output.Pos.x * sin(output.Pos.y*0.1f+timer*5.f);
-	output.Pos.z = output.Pos.z * sin(output.Pos.y * 0.1f + timer * 2.f);*/
+
 	output.Pos = mul(World, output.Pos); //because it is column major
 	//for lighting
 	output.PosW = output.Pos.xyz;
