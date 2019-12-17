@@ -18,7 +18,6 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-void createSphere(float fRadius, UINT uSlices, UINT uStacks);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -227,7 +226,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    };
    static const D3D11_INPUT_ELEMENT_DESC skyBoxInputDesc[] =
    {
-	   { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+	
    };
    hr = mDev->CreateInputLayout(skyBoxInputDesc, 1, SkyVertexShader, sizeof(SkyVertexShader), &skyLayout);
    D3D11_BUFFER_DESC bDesc;
@@ -338,7 +338,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ZeroMemory(&bDesc, sizeof(bDesc));
    ZeroMemory(&subData, sizeof(subData));
 
-   loadObject("Assets/Rock.obj", rockVertex, rockIndices, true);
+   loadObject("Assets/Rock.obj", rockVertex);
 
    bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
    bDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -349,24 +349,22 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    subData.pSysMem = rockVertex.data();
    hr=mDev->CreateBuffer(&bDesc, &subData, &vRockBuff);
 
-   //Index Buffer mesh
-   subData.pSysMem = rockIndices.data();
-   bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-   bDesc.ByteWidth = sizeof(unsigned int)*rockIndices.size();
-   hr = mDev->CreateBuffer(&bDesc, &subData, &iRockBuff);
+
 
    //Load New Mesh
    hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &vRockShader);
    hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &pRockShader);
+
    D3D11_INPUT_ELEMENT_DESC meshInputDesc[] =
    {
 		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
    };
    // Load the Texture
-   hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Rock_Diffuse.dds", (ID3D11Resource**)&rockTexture, &rockTextureRV);
-
+   hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Rock_Diffuse.dds", NULL, &rockTextureRV);
+   hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Rock_SPecular.dds", NULL, &rockTextureRV1);
    // Create the sample state
    ZeroMemory(&sampleDesc, sizeof(sampleDesc));
    sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -377,13 +375,13 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    sampleDesc.MinLOD = 0;
    sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
    hr = mDev->CreateSamplerState(&sampleDesc, &rockSamplerState);
-   hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vRockLayout);
+   hr = mDev->CreateInputLayout(meshInputDesc, 4, VertexMeshShader, sizeof(VertexMeshShader), &vRockLayout);
 
 
 
 
    //Load Flag
-   loadObject("Assets/Flag.obj", flagVertex, flagIndices, true);
+   loadObject("Assets/Flag.obj", flagVertex);
 
    bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
    bDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -394,11 +392,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    subData.pSysMem = flagVertex.data();
    hr=mDev->CreateBuffer(&bDesc, &subData, &vFlagBuff);
 
-   //Index Buffer mesh
-   subData.pSysMem = flagIndices.data();
-   bDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-   bDesc.ByteWidth = sizeof(unsigned int)*flagIndices.size();
-   hr = mDev->CreateBuffer(&bDesc, &subData, &iFlagBuff);
+
 
    //Load New Mesh
    hr = mDev->CreateVertexShader(VertexWaveShader, sizeof(VertexWaveShader), nullptr, &vFlagShader);
@@ -416,7 +410,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    sampleDesc.MinLOD = 0;
    sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
    hr = mDev->CreateSamplerState(&sampleDesc, &flagSamplerState);
-   hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vFlagLayout);
+   hr = mDev->CreateInputLayout(meshInputDesc, 4, VertexMeshShader, sizeof(VertexMeshShader), &vFlagLayout);
 
    //Load StoneHenge Mesh
 
@@ -456,8 +450,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    sampleDesc.MinLOD = 0;
    sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
    hr = mDev->CreateSamplerState(&sampleDesc, &stoneSamplerState);
-
-   hr = mDev->CreateInputLayout(meshInputDesc, 3, VertexMeshShader, sizeof(VertexMeshShader), &vStoneLayout);
+   hr = mDev->CreateInputLayout(meshInputDesc, 4, VertexMeshShader, sizeof(VertexMeshShader), &vStoneLayout);
 
 
 
@@ -477,6 +470,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
 
+
+   earth.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
+   hr=CreateDDSTextureFromFile(mDev, L"Assets/Textures/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
+   hr=CreateDDSTextureFromFile(mDev, L"Assets/Textures/Earth.dds", NULL, &earth.pGO_SRV_Texture);
+
+   hr = mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
+   hr = mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
+
+   hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
+   hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
+
+
    //Directional Light
    XMStoreFloat4(&myLighting.dLightDir, dLight);
    //Point Light
@@ -494,14 +499,16 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    XMMATRIX temp = XMMatrixIdentity();
    XMStoreFloat4x4(&myMatricies.g_World,temp);
    XMStoreFloat4x4(&mySecWorld.g_World, temp);
+
    // Initialize the view matrix
 	curCamera = &firstCam;
-	curCamera->camPosition = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
+	curCamera->camPosition = XMVectorSet(0.0f, 10.0f, -20.0f, 0.0f);
 	curCamera->camTarget = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	curCamera->camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
    temp = XMMatrixLookAtLH(curCamera->camPosition, curCamera->camTarget, curCamera->camUp);
    XMStoreFloat4x4(&myMatricies.g_View, temp);
    XMStoreFloat4x4(&mySecWorld.g_View, temp);
+
    aspectRatio = swap.BufferDesc.Width / 2.0f / swap.BufferDesc.Height;
    temp = XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane);
    XMStoreFloat4x4(&myMatricies.g_Projection, temp);
@@ -599,22 +606,22 @@ void Render()
 	if (multiviewPort)
 	{
 		mContext->RSSetViewports(1, &mFirPort);
-		postRender(myMatricies);
+		ThemeOne(myMatricies);
 		mContext->RSSetViewports(1, &mSecPort);
-		postRender(mySecWorld);
+		ThemeTwo(mySecWorld);
 	}
 	else
 	{
 
 		mContext->RSSetViewports(1, &mPort);
-		postRender(myMatricies);
+		ThemeOne(myMatricies);
 
 	}
 	mSwap->Present(1, 0);
 
 
 }
-void postRender(WVP myMatrix)
+void ThemeOne(WVP &myMatrix)
 {
 
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer = {};
@@ -639,8 +646,8 @@ void postRender(WVP myMatrix)
 	//Define sphereWorld's world space matrix
 	Scale = XMMatrixScaling(5.0f, 5.0f, 5.0f);
 	//Make sure the sphere is always centered around camera
-	if(curCamera)
-	Translation = XMMatrixTranslation(XMVectorGetX(curCamera->camPosition), XMVectorGetY(curCamera->camPosition), XMVectorGetZ(curCamera->camPosition));
+
+	Translation = XMMatrixTranslation(XMVectorGetX(firstCam.camPosition), XMVectorGetY(firstCam.camPosition), XMVectorGetZ(firstCam.camPosition));
 	XMStoreFloat4x4(&myMatrix.g_World, Scale * Translation);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
@@ -653,7 +660,6 @@ void postRender(WVP myMatrix)
 	UINT strides[] = { sizeof(SimpleVertex) };
 	UINT offsets[] = { 0 };
 	mContext->IASetVertexBuffers(0, 1, &vBuff, strides, offsets);
-	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	mContext->IASetInputLayout(vLayout);
 	mContext->VSSetShader(vShader, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
@@ -707,43 +713,40 @@ void postRender(WVP myMatrix)
 
 	
 	//Draw Rock
-
-	
-
 	//Set Pipline
 	UINT mesh_strides[] = { sizeof(SimpleMesh) };
 	UINT mesh_offsets[] = { 0 };
 	mContext->IASetVertexBuffers(0, 1, &vRockBuff, mesh_strides, mesh_offsets);
-	mContext->IASetIndexBuffer(iRockBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vRockShader, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(pRockShader, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	mContext->IASetInputLayout(vRockLayout);
 	mContext->PSSetShaderResources(0, 1, &rockTextureRV);
+	mContext->PSSetShaderResources(1, 1, &rockTextureRV1);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
 	temp = XMMatrixTranslation(-10, 0, -2);
 	temp2 = XMMatrixIdentity();
 	temp2 = XMMatrixTranslation(5, 0, -2);
-	temp = XMMatrixMultiply(temp,XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1])));
+	temp = XMMatrixMultiply(temp, XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1])));
 	temp = temp * temp2;
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
 	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
-	mContext->DrawIndexed(rockIndices.size(), 0, 0);
+	mContext->Draw(rockVertex.size(), 0);
 
 
 	mesh_strides[0] = { sizeof(SimpleMesh) };
 	 mesh_offsets[0] = { 0 };
 	mContext->IASetVertexBuffers(0, 1, &vFlagBuff, mesh_strides, mesh_offsets);
-	mContext->IASetIndexBuffer(iFlagBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vFlagShader, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->VSSetConstantBuffers(1, 1, &timerBuff);
 	mContext->PSSetShader(pFlagShader, 0, 0);
+	mContext->PSSetShaderResources(0, 1, &flagTextureRV);
 	mContext->IASetInputLayout(vFlagLayout);
 
 	temp = XMMatrixIdentity();
@@ -761,8 +764,7 @@ void postRender(WVP myMatrix)
 	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
 	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
 	mContext->Unmap(timerBuff, 0);
-
-	mContext->DrawIndexed(flagIndices.size(), 0, 0);
+	mContext->Draw(flagVertex.size(), 0);
 
 
 	//Draw StoneHenge
@@ -787,8 +789,151 @@ void postRender(WVP myMatrix)
 	mContext->DrawIndexed(2532, 0, 0);
 
 }
-void ThemeTwo(WVP myMatrix)
+void ThemeTwo(WVP& myMatrix)
 {
+	D3D11_MAPPED_SUBRESOURCE gpuBuffer = {};
+	HRESULT  hr;
+	XMMATRIX temp = XMMatrixIdentity();
+	XMMATRIX temp2 = XMMatrixIdentity();
+	totalTime[1] += mTimer.Delta();
+	UINT skyStrides[] = { sizeof(SkyBox) };
+	UINT skyoffsets[] = { 0 };
+	mContext->PSSetShaderResources(0, 1, &spaceSkybox.pGO_SRV_Texture);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mContext->IASetVertexBuffers(0, 1, &vSkyBuff, skyStrides, skyoffsets);
+	mContext->IASetIndexBuffer(iSkyBuff, DXGI_FORMAT_R32_UINT, 0);
+	mContext->VSSetShader(vSkyShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(pSkyShader, 0, 0);
+	mContext->IASetInputLayout(skyLayout);
+	mContext->PSSetSamplers(0, 1, &skyBoxSamplerState);
+
+	temp = XMMatrixIdentity();
+
+	//Define sphereWorld's world space matrix
+	Scale = XMMatrixScaling(5.0f, 5.0f, 5.0f);
+	//Make sure the sphere is always centered around camera
+
+	Translation = XMMatrixTranslation(XMVectorGetX(secCam.camPosition), XMVectorGetY(secCam.camPosition), XMVectorGetZ(secCam.camPosition));
+	XMStoreFloat4x4(&myMatrix.g_World, Scale * Translation);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->DrawIndexed(36, 0, 0);
+	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+
+
+
+
+	if (myLighting.lightingMode == 1)
+	{
+		//Directional Light
+		dLight = XMVector4Transform(dLight, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
+		XMStoreFloat4(&myLighting.dLightDir, dLight);
+		//Point Light
+		pLightPos = XMVector4Transform(pLightPos, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
+		XMStoreFloat4(&myLighting.pLightPos, pLightPos);
+		//Spot Light 
+		XMFLOAT4 slightTemp;
+
+		XMStoreFloat4(&slightTemp, sLightPos);
+		if (flag)
+		{
+			sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, 10 * delta_time));
+			if (slightTemp.z > 10)
+				flag = false;
+		}
+		else
+		{
+			sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, -10 * delta_time));
+			if (slightTemp.z < -10)
+				flag = true;
+		}
+		XMStoreFloat4(&myLighting.sLightPos, sLightPos);
+		sLightDir = XMVector4Transform(sLightDir, XMMatrixRotationY(XMConvertToRadians(10 * -delta_time)));
+		XMStoreFloat4(&myLighting.sLightDir, sLightDir);
+	}
+	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
+	hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
+	*((LightingConstant*)(LightingBuffer.pData)) = myLighting;
+	mContext->Unmap(cLightBuff, 0);
+
+
+	//Draw Rock
+	UINT mesh_strides[] = { sizeof(SimpleMesh) };
+	UINT mesh_offsets[] = { 0 };
+	mContext->IASetVertexBuffers(0, 1, &earth.pGO_Vbuff, mesh_strides, mesh_offsets);
+	mContext->VSSetShader(earth.pGO_VS, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(earth.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->IASetInputLayout(earth.pGO_inputLayout);
+	mContext->PSSetShaderResources(0, 1, &earth.pGO_SRV_Texture);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1]))*XMMatrixTranslation(-200, 0, -300);
+	temp2 = XMMatrixIdentity();
+	temp2=XMMatrixRotationY(XMConvertToRadians(5 * totalTime[1]));
+	temp = temp * temp2;
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->Draw(earth.GO_vertex.size(), 0);
+
+
+	mesh_strides[0] = { sizeof(SimpleMesh) };
+	mesh_offsets[0] = { 0 };
+	mContext->IASetVertexBuffers(0, 1, &vFlagBuff, mesh_strides, mesh_offsets);
+	mContext->VSSetShader(vFlagShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->VSSetConstantBuffers(1, 1, &timerBuff);
+	mContext->PSSetShader(pFlagShader, 0, 0);
+	mContext->PSSetShaderResources(0,1,&flagTextureRV);
+	mContext->IASetInputLayout(vFlagLayout);
+
+	temp = XMMatrixIdentity();
+	temp = XMMatrixTranslation(10, 5, -2);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	flagPos = { myMatrix.g_World._41, myMatrix.g_World._42, myMatrix.g_World._43, myMatrix.g_World._44 };
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+
+
+	totalTime[0] = mTimer.TotalTime();
+	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
+	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
+	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
+	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
+	mContext->Unmap(timerBuff, 0);
+
+	mContext->Draw(flagVertex.size(), 0);
+
+
+	//Draw StoneHenge
+	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
+	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
+
+	//Set Pipline
+	mesh_strides[0] = { sizeof(_OBJ_VERT_) };
+	mesh_offsets[0] = { 0 };
+	mContext->IASetVertexBuffers(0, 1, &vStoneBuff, mesh_strides, mesh_offsets);
+	mContext->IASetIndexBuffer(iStoneBuff, DXGI_FORMAT_R32_UINT, 0);
+	mContext->VSSetShader(vStoneShader, 0, 0);
+	mContext->PSSetShader(pStoneShader, 0, 0);
+	mContext->IASetInputLayout(vStoneLayout);
+
+	temp = XMMatrixIdentity();
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	stonePos = { myMatrix.g_World._41, myMatrix.g_World._42, myMatrix.g_World._43, myMatrix.g_World._44 };
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->DrawIndexed(2532, 0, 0);
 
 }
 void Update()
@@ -955,6 +1100,7 @@ void Update()
 		lastPos.y = CurPos.y;
 	}
 	curCamera->UpdateCamera();
+
 	if (lookAT)
 	{
 		if (GetAsyncKeyState(VK_UP) & 0x1)
@@ -964,13 +1110,23 @@ void Update()
 			if (curObj == objPos.size())
 				curObj = 0;
 		}
+		objPos[0] = trianglePos;
+		objPos[1] = rockPos;
+		objPos[2] = flagPos;
+		objPos[3] = trianglePos;
 		curCamera->camTarget = XMLoadFloat4(&objPos[curObj]);
 	}
+
 	XMStoreFloat4(&camPos, curCamera->camPosition);
 	if (curCamera == &firstCam)
+	{
 		curCamera->LoadViewMatrix(myMatricies.g_View);
+	}
+
 	if(curCamera==&secCam)
-	curCamera->LoadViewMatrix(mySecWorld.g_View);
+	{
+		curCamera->LoadViewMatrix(mySecWorld.g_View);
+	}
 }
 
 void CreateSphere(int LatLines, int LongLines)
@@ -989,11 +1145,11 @@ void CreateSphere(int LatLines, int LongLines)
 	vertices[0].Pos.y = 0.0f;
 	vertices[0].Pos.z = 1.0f;
 
-	for (DWORD i = 0; i < LatLines - 2; ++i)
+	for (unsigned int i = 0; i < LatLines - 2; ++i)
 	{
 		spherePitch = (i + 1) * (3.14 / (LatLines - 1));
 		Rotationx = XMMatrixRotationX(spherePitch);
-		for (DWORD j = 0; j < LongLines; ++j)
+		for (unsigned int j = 0; j < LongLines; ++j)
 		{
 			sphereYaw = j * (6.28 / (LongLines));
 			Rotationy = XMMatrixRotationZ(sphereYaw);
@@ -1022,14 +1178,14 @@ void CreateSphere(int LatLines, int LongLines)
 	D3D11_SUBRESOURCE_DATA vertexBufferData;
 
 	ZeroMemory(&vertexBufferData, sizeof(vertexBufferData));
-	vertexBufferData.pSysMem = &vertices[0];
-	HRESULT hr = mDev->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &sphereVertBuffer);
+	vertexBufferData.pSysMem = vertices.data();
+	HRESULT hr = mDev->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &spVertBuffer);
 
 
-	std::vector<DWORD> indices(NumSphereFaces * 3);
+	std::vector<unsigned int> indices(NumSphereFaces * 3);
 
 	int k = 0;
-	for (DWORD l = 0; l < LongLines - 1; ++l)
+	for (unsigned int l = 0; l < LongLines - 1; ++l)
 	{
 		indices[k] = 0;
 		indices[k + 1] = l + 1;
@@ -1042,9 +1198,9 @@ void CreateSphere(int LatLines, int LongLines)
 	indices[k + 2] = 1;
 	k += 3;
 
-	for (DWORD i = 0; i < LatLines - 3; ++i)
+	for (unsigned int i = 0; i < LatLines - 3; ++i)
 	{
-		for (DWORD j = 0; j < LongLines - 1; ++j)
+		for (unsigned int j = 0; j < LongLines - 1; ++j)
 		{
 			indices[k] = i * LongLines + j + 1;
 			indices[k + 1] = i * LongLines + j + 2;
@@ -1068,7 +1224,7 @@ void CreateSphere(int LatLines, int LongLines)
 		k += 6;
 	}
 
-	for (DWORD l = 0; l < LongLines - 1; ++l)
+	for (unsigned int l = 0; l < LongLines - 1; ++l)
 	{
 		indices[k] = NumSphereVertices - 1;
 		indices[k + 1] = (NumSphereVertices - 1) - (l + 1);
@@ -1084,19 +1240,19 @@ void CreateSphere(int LatLines, int LongLines)
 	ZeroMemory(&indexBufferDesc, sizeof(indexBufferDesc));
 
 	indexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	indexBufferDesc.ByteWidth = sizeof(DWORD) * NumSphereFaces * 3;
+	indexBufferDesc.ByteWidth = sizeof(unsigned int) * NumSphereFaces * 3;
 	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
 	indexBufferDesc.CPUAccessFlags = 0;
 	indexBufferDesc.MiscFlags = 0;
 
 	D3D11_SUBRESOURCE_DATA iinitData;
 
-	iinitData.pSysMem = &indices[0];
-	mDev->CreateBuffer(&indexBufferDesc, &iinitData, &sphereIndexBuffer);
+	iinitData.pSysMem = indices.data();
+	mDev->CreateBuffer(&indexBufferDesc, &iinitData, &spIndexBuffer);
 
 }
 
-bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies,bool isRHCoord)
+bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices)
 {
 	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
 	std::vector<XMFLOAT3> tempVerts;
@@ -1119,7 +1275,6 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 		{
 			XMFLOAT3 vertex;
 			fscanf_s(file, "%f %f %f\n", &vertex.x, &vertex.y, &vertex.z);
-			if(isRHCoord)
 			vertex.z = -vertex.z;
 			tempVerts.push_back(vertex);
 		}
@@ -1134,7 +1289,6 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 		{
 			XMFLOAT3 norm;
 			fscanf_s(file, "%f %f %f\n", &norm.x, &norm.y, &norm.z);
-			if (isRHCoord)
 				norm.z = -norm.z;
 			tempNormals.push_back(norm);
 		}
@@ -1168,7 +1322,6 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::ve
 		temp.Norm = tempNormals[normalIndices[i] - 1];
 		
 		outVertices.push_back(temp);
-		outIndicies.push_back(i);
 	}
 
 	return true;
@@ -1182,6 +1335,18 @@ void WindowResize(UINT _width, UINT _height)
 	XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
 }
 
+
+void LoadGameObject()
+{
+	spaceSkybox.CreateGameObject(mDev,"Assets/spaceSkybox.obj",SkyVertexShader,sizeof(SkyVertexShader));
+	earth.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	CreateDDSTextureFromFile(mDev, L"Assets/Texture/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
+	CreateDDSTextureFromFile(mDev, L"Assets/Texture/Earth.dds", NULL, &earth.pGO_SRV_Texture);
+}
+
+
+
+
 void CleanupDevice()
 {
 	if(mRTV)mRTV->Release();
@@ -1191,15 +1356,23 @@ void CleanupDevice()
 
 	if (zBuffer)zBuffer->Release();
 	if (zBufferView)zBufferView->Release();
+
 	if (cLightBuff)cLightBuff->Release();
 	if (cBuff)cBuff->Release();
 	if (timerBuff)timerBuff->Release();
 
-
+	//triangle
 	if(vBuff)vBuff->Release();
 	if (vShader)vShader->Release();
 	if (pShader)pShader->Release();
 	if (vLayout)vLayout->Release();
+
+	//Sphere
+	if(spIndexBuffer)spIndexBuffer->Release();
+	if(spVertBuffer)spVertBuffer->Release();
+	if(spLayout) spLayout->Release();
+	if(spVShader)spVShader->Release(); //HLSL
+	if(spPShader)spPShader->Release();  //HLSL
 
 	//skybox
 	if (vSkyBuff)vSkyBuff->Release();
@@ -1212,18 +1385,16 @@ void CleanupDevice()
 
 	//rock
 	if (vRockBuff)vRockBuff->Release();
-	if (iRockBuff)iRockBuff->Release();
 	if (vRockShader)vRockShader->Release();
 	if (pRockShader)pRockShader->Release();
 	if (rockSamplerState)rockSamplerState->Release();
 	if (rockTextureRV)rockTextureRV->Release();
 	if (rockTexture)rockTexture->Release();
 	if (vRockLayout)vRockLayout->Release();
-
+	if (rockTextureRV1)rockTextureRV1->Release();
 
 	//flag
 	if (vFlagBuff)vFlagBuff->Release();
-	if (iFlagBuff) iFlagBuff->Release();
 	if(vFlagShader)		 vFlagShader->Release();
 	if (pFlagShader)		  pFlagShader->Release();
 	if (flagTextureRV)	 flagTextureRV ->Release();

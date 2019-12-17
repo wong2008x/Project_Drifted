@@ -16,6 +16,8 @@ cbuffer ConstantBuffer	 : register(b0)
 struct skyVertexInput
 {
 	float3 Pos : POSITION;
+	float3 Tex:TEXCOORD;
+	float3 Norm:NORMAL;
 };
 
 

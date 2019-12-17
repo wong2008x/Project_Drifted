@@ -1,6 +1,10 @@
 
 #include <string>
 #include <thread>
+#include <d3d11.h>
+#pragma comment(lib,"d3d11.lib")
+#include <vector>
+#include <fstream>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
 using namespace std;
@@ -17,6 +21,7 @@ struct SimpleMesh
 	XMFLOAT3 Pos;
 	XMFLOAT3 Tex;
 	XMFLOAT3 Norm;
+	XMFLOAT3 Tangent;
 };
 struct SkyBox
 {
@@ -29,7 +34,6 @@ struct WVP
 	XMFLOAT4X4                g_World;   //64
 	XMFLOAT4X4                g_View;    //64
 	XMFLOAT4X4                g_Projection; //64
-
 };
 
 struct LightingConstant

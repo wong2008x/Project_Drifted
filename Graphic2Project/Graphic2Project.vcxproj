@@ -154,6 +154,7 @@
     <ClInclude Include="Assets\StoneHenge.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="GameObject.h" />
     <ClInclude Include="Graphic2Project.h" />
     <ClInclude Include="Include.h" />
     <ClInclude Include="Resource.h" />
@@ -164,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="GameObject.cpp" />
     <ClCompile Include="Graphic2Project.cpp" />
     <ClCompile Include="Utillity\DDSTextureLoader.cpp" />
     <ClCompile Include="Utillity\XTime.cpp" />

@@ -1,5 +1,7 @@
 
 Texture2D txDiffuse : register(t0);
+Texture2D txSpecular: register(t1);
+Texture2D txNorm:register(t2);
 SamplerState samLinear : register(s0);
 
 
@@ -26,10 +28,13 @@ cbuffer LightingConstant :register(b0)
 static const float4 diffuseColor = { 1.0f, 1.0f, 0.878f, 1.0f };
 static const float4 pointLColor = { 0.9f,0.0f,0.0f,1.0f };
 static const float4 spotLColor = { 0.8f,0.8f,0.8f,1.0f };
+static const float4 amLightClr = { 0.2f, 0.2f, 0.2f,1.0f };
 
 float4 main(OutputVertex input) : SV_TARGET
 {
 	float4 textureColor;
+	float4 texture2Color;
+	
 	//Directional Light
 	float   lightIntensity;
 	float4 dirColor = { 0,0,0,0 };
@@ -40,12 +45,13 @@ float4 main(OutputVertex input) : SV_TARGET
 	// SHOULD NORMALIZE INPUT.NORMAL HERE
 	input.Norm = normalize(input.Norm);
 
-	//Apply Texture
-	//input.Tex.xy= float2(float(sin(input.Tex.x * 500) * .01f + input.Tex.x), input.Tex.y);
-	textureColor = txDiffuse.Sample(samLinear, input.Tex.xy);
-	
-	//Directional Light
 
+	textureColor = txDiffuse.Sample(samLinear, input.Tex.xy);
+	//texture2Color = txSpecular.Sample(samLinear, input.Tex.xy);
+
+	//	textureColor = textureColor * texture2Color * 2.0;
+	float4 amClr = textureColor * amLightClr;
+	//Directional Light
 		lightIntensity = saturate(dot(input.Norm, -dLightDir.xyz));
 		dirColor = textureColor* saturate(diffuseColor * lightIntensity);
 	//Point Light
@@ -67,6 +73,6 @@ float4 main(OutputVertex input) : SV_TARGET
 		if (LightingMode == 5)
 			return textureColor;
 
-	return dirColor+ pointColor +spotColor;
+	return dirColor+ pointColor +spotColor+ amClr;
 	
 }

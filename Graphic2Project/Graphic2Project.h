@@ -1,28 +1,26 @@
 #pragma once
 
 #include "resource.h"
-#include <d3d11.h>
-#pragma comment(lib,"d3d11.lib")
 #include "Shader.h"
-#include <vector>
-#include <fstream>
+
 #include "Camera.h"
 #include "Assets/StoneHenge.h"	
 #include "Utillity/DDSTextureLoader.h"
 #include "Utillity/XTime.h"
 #include "Include.h"
+#include "GameObject.h"
 
-using namespace std;
 
 
 //Forward declaration
 void CleanupDevice();
 void Render();
-void postRender(WVP myMatrix);
-void ThemeTwo(WVP myMatrix);
+void ThemeOne(WVP &myMatrix);
+void ThemeTwo(WVP &myMatrix);
 void Update();
-bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices, std::vector <unsigned int>& outIndicies, bool isRHCoord);
+bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices);
 void WindowResize(UINT _width, UINT _height);
+void LoadGameObject();
 
 
 
@@ -68,6 +66,7 @@ D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
 ID3D11Buffer* cBuff = nullptr; //Constant Buffer
 ID3D11Buffer* timerBuff = nullptr; //Constant Buffer
 ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
+
 //primitive Triangle
 ID3D11Buffer* vBuff = nullptr;
 ID3D11InputLayout* vLayout = nullptr;
@@ -86,21 +85,19 @@ ID3D11SamplerState* skyBoxSamplerState = nullptr;
 
 //Mesh Loader
 vector<SimpleMesh> rockVertex;
-vector<unsigned int> rockIndices;
 ID3D11Buffer* vRockBuff = nullptr;
-ID3D11Buffer* iRockBuff = nullptr;
 ID3D11VertexShader* vRockShader = nullptr;//HLSL
 ID3D11PixelShader* pRockShader = nullptr;
-ID3D11ShaderResourceView* rockTextureRV = nullptr;
+ID3D11ShaderResourceView* rockTextureRV=nullptr;
+ID3D11ShaderResourceView* rockTextureRV1 = nullptr;
 ID3D11Texture2D* rockTexture = nullptr;
 ID3D11InputLayout* vRockLayout = nullptr;
 ID3D11SamplerState* rockSamplerState = nullptr;
 XMFLOAT4 rockPos;
+
 //Flag 
 vector<SimpleMesh> flagVertex;
-vector<unsigned int> flagIndices;
 ID3D11Buffer* vFlagBuff = nullptr;
-ID3D11Buffer* iFlagBuff = nullptr;
 ID3D11VertexShader* vFlagShader = nullptr;//HLSL
 ID3D11PixelShader* pFlagShader = nullptr;
 ID3D11ShaderResourceView* flagTextureRV = nullptr;
@@ -121,9 +118,15 @@ ID3D11InputLayout* vStoneLayout = nullptr;
 ID3D11SamplerState* stoneSamplerState= nullptr;
 XMFLOAT4 stonePos;
 
-ID3D11Buffer* sphereIndexBuffer = nullptr;
-ID3D11Buffer* sphereVertBuffer = nullptr;
+ID3D11Buffer* spIndexBuffer = nullptr;
+ID3D11Buffer* spVertBuffer = nullptr;
+ID3D11InputLayout* spLayout = nullptr;
+ID3D11VertexShader* spVShader = nullptr; //HLSL
+ID3D11PixelShader* spPShader = nullptr;  //HLSL
 
+GameObject spaceSkybox;
+GameObject spaceShip;
+GameObject earth;
 
 vector<XMFLOAT4> objPos;
 ID3D11Texture2D* zBuffer = nullptr;
@@ -142,6 +145,7 @@ POINT CurPos{ -1,-1 };
 Camera* curCamera;
 Camera firstCam;
 Camera secCam;
+
 XMFLOAT4 camPos;
 
 
