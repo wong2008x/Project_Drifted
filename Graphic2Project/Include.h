@@ -36,10 +36,21 @@ struct WVP
 	XMFLOAT4X4                g_Projection; //64
 };
 
+struct CamConstant
+{
+	XMFLOAT4 camPos;
+	BOOL hasNormal;
+	BOOL hasMultiTex;
+	BOOL hasShadowMap;
+	FLOAT padding;
+};
 struct LightingConstant
 {
+	XMFLOAT4 dLightClr;
 	XMFLOAT4 dLightDir;  //16
+	XMFLOAT4 pLightClr;
 	XMFLOAT4 pLightPos;//16
+	XMFLOAT4 sLightClr;
 	XMFLOAT4 sLightDir;//16
 	XMFLOAT4 sLightPos;//16
 	float innerAngle;//4

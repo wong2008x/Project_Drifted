@@ -227,9 +227,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    static const D3D11_INPUT_ELEMENT_DESC skyBoxInputDesc[] =
    {
 		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	
    };
-   hr = mDev->CreateInputLayout(skyBoxInputDesc, 1, SkyVertexShader, sizeof(SkyVertexShader), &skyLayout);
+   hr = mDev->CreateInputLayout(skyBoxInputDesc, 3, SkyVertexShader, sizeof(SkyVertexShader), &skyLayout);
    D3D11_BUFFER_DESC bDesc;
    D3D11_SUBRESOURCE_DATA subData;
    ZeroMemory(&bDesc, sizeof(bDesc));
@@ -332,6 +334,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    bDesc.ByteWidth = sizeof(double)*2;
    hr = mDev->CreateBuffer(&bDesc, nullptr, &timerBuff);
+
+   bDesc.ByteWidth = sizeof(CamConstant);
+   hr = mDev->CreateBuffer(&bDesc, nullptr, &camBuff);
 
 
 
@@ -469,30 +474,49 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreateDepthStencilView(zBuffer, nullptr, &zBufferView);
 
 
+   thread Loading = thread(LoadGameObject);
+   Loading.join();
 
+   //hr = mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
+   //hr = mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
 
-   earth.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
-   hr=CreateDDSTextureFromFile(mDev, L"Assets/Textures/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
-   hr=CreateDDSTextureFromFile(mDev, L"Assets/Textures/Earth.dds", NULL, &earth.pGO_SRV_Texture);
+   //hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
+   //hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
 
-   hr = mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
-   hr = mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
-
-   hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
-   hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
+   //hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &satellite.pGO_VS);
+   //hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &satellite.pGO_PS);
 
 
    //Directional Light
+   myLighting.dLightClr = { 0.95f, 0.95f, 0.95f, 1.0f };
    XMStoreFloat4(&myLighting.dLightDir, dLight);
    //Point Light
+   myLighting.pLightClr = { 0.9f,0.0f,0.0f,1.0f };
    XMStoreFloat4(&myLighting.pLightPos, pLightPos);
    XMStoreFloat(&myLighting.pLightRadius, pLightRadius);
    //Spot Light
+   myLighting.sLightClr = { 0.8f,0.8f,0.8f,1.0f };
    XMStoreFloat4(&myLighting.sLightPos, sLightPos);
    XMStoreFloat4(&myLighting.sLightDir, sLightDir);
    XMStoreFloat(&myLighting.innerAngle, innerAngle);
    XMStoreFloat(&myLighting.outerAngle, outerAngle);
+
    myLighting.lightingMode = 1;
+
+
+   mySecLighting.dLightClr = { 0.95f, 0.95f, 0.95f, 1.0f };
+   XMStoreFloat4(&mySecLighting.dLightDir, dLight);
+   //Point Light
+   mySecLighting.pLightClr = { 0.9f,0.0f,0.0f,1.0f };
+   XMStoreFloat4(&mySecLighting.pLightPos, pLightPos);
+   XMStoreFloat(&mySecLighting.pLightRadius, pLightRadius);
+   //Spot Light
+   mySecLighting.sLightClr = { 0.8f,0.8f,0.8f,1.0f };
+   XMStoreFloat4(&mySecLighting.sLightPos, sLightPos);
+   XMStoreFloat4(&mySecLighting.sLightDir, sLightDir);
+   XMStoreFloat(&mySecLighting.innerAngle, innerAngle);
+   XMStoreFloat(&mySecLighting.outerAngle, outerAngle);
+   mySecLighting.lightingMode = 1;
 
 
    // Initialize the world matrices
@@ -502,7 +526,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    // Initialize the view matrix
 	curCamera = &firstCam;
-	curCamera->camPosition = XMVectorSet(0.0f, 10.0f, -20.0f, 0.0f);
+	curCamera->camPosition = XMVectorSet(0.0f, 10.0f, -40.0f, 0.0f);
 	curCamera->camTarget = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	curCamera->camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
    temp = XMMatrixLookAtLH(curCamera->camPosition, curCamera->camTarget, curCamera->camUp);
@@ -614,8 +638,14 @@ void Render()
 	{
 
 		mContext->RSSetViewports(1, &mPort);
+		if(SceneOne)
+		{
 		ThemeOne(myMatricies);
-
+		}
+		else
+		{
+		ThemeTwo(mySecWorld);
+		}
 	}
 	mSwap->Present(1, 0);
 
@@ -627,7 +657,23 @@ void ThemeOne(WVP &myMatrix)
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer = {};
 	HRESULT  hr;
 	XMMATRIX temp = XMMatrixIdentity();
+	totalTime[0] = mTimer.TotalTime();
 	totalTime[1] += mTimer.Delta();
+	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
+	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
+	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
+	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
+	mContext->Unmap(timerBuff, 0);
+
+	D3D11_MAPPED_SUBRESOURCE camBuffer;
+	XMStoreFloat4(&myfirCamCons.camPos,firstCam.camPosition);
+	myfirCamCons.hasMultiTex = false;
+	myfirCamCons.hasNormal = false;
+	myfirCamCons.hasShadowMap = false;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = myfirCamCons;
+	mContext->Unmap(camBuff, 0);
+
 	UINT skyStrides[] = { sizeof(SkyBox) };
 	UINT skyoffsets[] = { 0 };
 	mContext->PSSetShaderResources(0, 1, &skyBoxTextureRV);
@@ -714,6 +760,7 @@ void ThemeOne(WVP &myMatrix)
 	
 	//Draw Rock
 	//Set Pipline
+
 	UINT mesh_strides[] = { sizeof(SimpleMesh) };
 	UINT mesh_offsets[] = { 0 };
 	mContext->IASetVertexBuffers(0, 1, &vRockBuff, mesh_strides, mesh_offsets);
@@ -721,6 +768,7 @@ void ThemeOne(WVP &myMatrix)
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(pRockShader, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetConstantBuffers(1, 1, &camBuff);
 	mContext->IASetInputLayout(vRockLayout);
 	mContext->PSSetShaderResources(0, 1, &rockTextureRV);
 	mContext->PSSetShaderResources(1, 1, &rockTextureRV1);
@@ -736,6 +784,12 @@ void ThemeOne(WVP &myMatrix)
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
+
+	myfirCamCons.hasMultiTex = true;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = myfirCamCons;
+	mContext->Unmap(camBuff, 0);
+
 	mContext->Draw(rockVertex.size(), 0);
 
 
@@ -757,19 +811,16 @@ void ThemeOne(WVP &myMatrix)
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
 
-	
-	totalTime[0] = mTimer.TotalTime();
-	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
-	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
-	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
-	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
-	mContext->Unmap(timerBuff, 0);
+	myfirCamCons.hasMultiTex = false;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = myfirCamCons;
+	mContext->Unmap(camBuff, 0);
+
 	mContext->Draw(flagVertex.size(), 0);
 
 
 	//Draw StoneHenge
-	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
-	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
+
 
 	//Set Pipline
 	mesh_strides[0] = { sizeof(_OBJ_VERT_) };
@@ -779,7 +830,8 @@ void ThemeOne(WVP &myMatrix)
 	mContext->VSSetShader(vStoneShader, 0, 0);
 	mContext->PSSetShader(pStoneShader, 0, 0);
 	mContext->IASetInputLayout(vStoneLayout);
-
+	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
+	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
 	temp = XMMatrixIdentity();
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
 	stonePos= { myMatrix.g_World._41, myMatrix.g_World._42, myMatrix.g_World._43, myMatrix.g_World._44 };
@@ -795,88 +847,73 @@ void ThemeTwo(WVP& myMatrix)
 	HRESULT  hr;
 	XMMATRIX temp = XMMatrixIdentity();
 	XMMATRIX temp2 = XMMatrixIdentity();
+
+	totalTime[0] = mTimer.TotalTime();
 	totalTime[1] += mTimer.Delta();
-	UINT skyStrides[] = { sizeof(SkyBox) };
+	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
+	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
+	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
+	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
+	mContext->Unmap(timerBuff, 0);
+
+	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
+	mySecLighting.sLightPos = { XMVectorGetX(secCam.camPosition),XMVectorGetY(secCam.camPosition),XMVectorGetZ(secCam.camPosition),1.0f };
+	//mySecLighting.sLightDir = { XMVectorGetX(secCam.camTarget),XMVectorGetY(secCam.camTarget),XMVectorGetZ(secCam.camTarget) ,1.0f };
+	hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
+	*((LightingConstant*)(LightingBuffer.pData)) = mySecLighting;
+	mContext->Unmap(cLightBuff, 0);
+
+	D3D11_MAPPED_SUBRESOURCE camBuffer;
+	XMStoreFloat4(&mysecCamCons.camPos, secCam.camPosition);
+	mysecCamCons.hasMultiTex = false;
+	mysecCamCons.hasNormal = false;
+	mysecCamCons.hasShadowMap = false;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = mysecCamCons;
+	mContext->Unmap(camBuff, 0);
+
 	UINT skyoffsets[] = { 0 };
 	mContext->PSSetShaderResources(0, 1, &spaceSkybox.pGO_SRV_Texture);
-	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	mContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mContext->IASetVertexBuffers(0, 1, &vSkyBuff, skyStrides, skyoffsets);
-	mContext->IASetIndexBuffer(iSkyBuff, DXGI_FORMAT_R32_UINT, 0);
-	mContext->VSSetShader(vSkyShader, 0, 0);
+	mContext->IASetVertexBuffers(0, 1, &spaceSkybox.pGO_Vbuff, &spaceSkybox.stride, skyoffsets);
+	mContext->VSSetShader(spaceSkybox.pGO_VS, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
-	mContext->PSSetShader(pSkyShader, 0, 0);
-	mContext->IASetInputLayout(skyLayout);
+	mContext->PSSetShader(spaceSkybox.pGO_PS, 0, 0);
+	mContext->IASetInputLayout(spaceSkybox.pGO_inputLayout);
 	mContext->PSSetSamplers(0, 1, &skyBoxSamplerState);
 
 	temp = XMMatrixIdentity();
 
 	//Define sphereWorld's world space matrix
-	Scale = XMMatrixScaling(5.0f, 5.0f, 5.0f);
+	Scale = XMMatrixScaling(10.0f, 10.0f, 10.0f);
 	//Make sure the sphere is always centered around camera
-
 	Translation = XMMatrixTranslation(XMVectorGetX(secCam.camPosition), XMVectorGetY(secCam.camPosition), XMVectorGetZ(secCam.camPosition));
 	XMStoreFloat4x4(&myMatrix.g_World, Scale * Translation);
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
-	mContext->DrawIndexed(36, 0, 0);
+	mContext->Draw(spaceSkybox.GO_vertex.size(), 0);
 	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
 
 
-
-
-	if (myLighting.lightingMode == 1)
-	{
-		//Directional Light
-		dLight = XMVector4Transform(dLight, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
-		XMStoreFloat4(&myLighting.dLightDir, dLight);
-		//Point Light
-		pLightPos = XMVector4Transform(pLightPos, XMMatrixRotationY(XMConvertToRadians(10 * delta_time)));
-		XMStoreFloat4(&myLighting.pLightPos, pLightPos);
-		//Spot Light 
-		XMFLOAT4 slightTemp;
-
-		XMStoreFloat4(&slightTemp, sLightPos);
-		if (flag)
-		{
-			sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, 10 * delta_time));
-			if (slightTemp.z > 10)
-				flag = false;
-		}
-		else
-		{
-			sLightPos = XMVector4Transform(sLightPos, XMMatrixTranslation(0, 0, -10 * delta_time));
-			if (slightTemp.z < -10)
-				flag = true;
-		}
-		XMStoreFloat4(&myLighting.sLightPos, sLightPos);
-		sLightDir = XMVector4Transform(sLightDir, XMMatrixRotationY(XMConvertToRadians(10 * -delta_time)));
-		XMStoreFloat4(&myLighting.sLightDir, sLightDir);
-	}
-	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
-	hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
-	*((LightingConstant*)(LightingBuffer.pData)) = myLighting;
-	mContext->Unmap(cLightBuff, 0);
-
-
-	//Draw Rock
-	UINT mesh_strides[] = { sizeof(SimpleMesh) };
+	//Draw Earth
 	UINT mesh_offsets[] = { 0 };
-	mContext->IASetVertexBuffers(0, 1, &earth.pGO_Vbuff, mesh_strides, mesh_offsets);
+	mContext->IASetVertexBuffers(0, 1, &earth.pGO_Vbuff, &earth.stride, mesh_offsets);
 	mContext->VSSetShader(earth.pGO_VS, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(earth.pGO_PS, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetConstantBuffers(1, 1, &camBuff);
 	mContext->IASetInputLayout(earth.pGO_inputLayout);
 	mContext->PSSetShaderResources(0, 1, &earth.pGO_SRV_Texture);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
-	temp = XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1]))*XMMatrixTranslation(-200, 0, -300);
+	temp = XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1]))*XMMatrixTranslation(0, 0, 100);
 	temp2 = XMMatrixIdentity();
 	temp2=XMMatrixRotationY(XMConvertToRadians(5 * totalTime[1]));
 	temp = temp * temp2;
+	XMStoreFloat4(&earth.objPos, temp.r[3]);
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
 	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
@@ -884,57 +921,60 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->Unmap(cBuff, 0);
 	mContext->Draw(earth.GO_vertex.size(), 0);
 
-
-	mesh_strides[0] = { sizeof(SimpleMesh) };
-	mesh_offsets[0] = { 0 };
-	mContext->IASetVertexBuffers(0, 1, &vFlagBuff, mesh_strides, mesh_offsets);
-	mContext->VSSetShader(vFlagShader, 0, 0);
+	//Draw Satellite
+	mContext->IASetVertexBuffers(0, 1, &satellite.pGO_Vbuff, &satellite.stride, mesh_offsets);
+	mContext->VSSetShader(satellite.pGO_VS, 0, 0);
+	mContext->PSSetShader(satellite.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->IASetInputLayout(satellite.pGO_inputLayout);
+	mContext->PSSetShaderResources(0, 1, &satellite.pGO_SRV_Texture);
+	mContext->PSSetShaderResources(1, 1, &satellite.pGO_SRV_secTexture);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
-	mContext->VSSetConstantBuffers(1, 1, &timerBuff);
-	mContext->PSSetShader(pFlagShader, 0, 0);
-	mContext->PSSetShaderResources(0,1,&flagTextureRV);
-	mContext->IASetInputLayout(vFlagLayout);
-
 	temp = XMMatrixIdentity();
-	temp = XMMatrixTranslation(10, 5, -2);
+	temp = XMMatrixScaling(0.3f, 0.3f, 0.3f)* XMMatrixTranslation(100, 0, 0);
+	temp2 = XMMatrixIdentity();
+	temp2 = (XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1]))* XMMatrixRotationZ(XMConvertToRadians(5 * totalTime[1])))*XMMatrixTranslation(earth.objPos.x, earth.objPos.y, earth.objPos.z);
+	temp = temp*temp2 ;
+	
+	XMStoreFloat4(&satellite.objPos, temp.r[3]);
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
-	flagPos = { myMatrix.g_World._41, myMatrix.g_World._42, myMatrix.g_World._43, myMatrix.g_World._44 };
+	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
 
+	mysecCamCons.hasMultiTex = true;
+	mysecCamCons.hasNormal = true;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = mysecCamCons;
+	mContext->Unmap(camBuff, 0);
 
-	totalTime[0] = mTimer.TotalTime();
-	D3D11_MAPPED_SUBRESOURCE mapTimeSubresource;
-	ZeroMemory(&mapTimeSubresource, sizeof(mapTimeSubresource));
-	mContext->Map(timerBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapTimeSubresource);
-	memcpy(mapTimeSubresource.pData, totalTime, sizeof(double) * 2);
-	mContext->Unmap(timerBuff, 0);
-
-	mContext->Draw(flagVertex.size(), 0);
-
-
-	//Draw StoneHenge
-	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
-	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
+	mContext->Draw(satellite.GO_vertex.size(), 0);
 
 	//Set Pipline
-	mesh_strides[0] = { sizeof(_OBJ_VERT_) };
-	mesh_offsets[0] = { 0 };
+	UINT mesh_strides[] = { sizeof(_OBJ_VERT_) };
 	mContext->IASetVertexBuffers(0, 1, &vStoneBuff, mesh_strides, mesh_offsets);
 	mContext->IASetIndexBuffer(iStoneBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vStoneShader, 0, 0);
 	mContext->PSSetShader(pStoneShader, 0, 0);
 	mContext->IASetInputLayout(vStoneLayout);
-
+	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
+	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
 	temp = XMMatrixIdentity();
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
 	stonePos = { myMatrix.g_World._41, myMatrix.g_World._42, myMatrix.g_World._43, myMatrix.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
-	mContext->DrawIndexed(2532, 0, 0);
 
+	mysecCamCons.hasMultiTex = false;
+	mysecCamCons.hasNormal = false;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = mysecCamCons;
+	mContext->Unmap(camBuff, 0);
+
+	mContext->DrawIndexed(2532, 0, 0);
 }
 void Update()
 {
@@ -1055,6 +1095,26 @@ void Update()
 		}
 	
 		XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
+		XMStoreFloat4x4(&mySecWorld.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
+	}
+	if (GetAsyncKeyState(VK_F2) & 0x1)
+	{
+		if(!multiviewPort)
+		{ 
+		
+		aspectRatio = (mWinR.right - mWinR.left) / (mWinR.bottom - mWinR.top) / 1.0f;
+		if (SceneOne)
+		{
+			XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
+		}
+		
+		else 
+		{
+		XMStoreFloat4x4(&mySecWorld.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
+		}
+		
+		SceneOne = !SceneOne;
+		}
 	}
 	if (GetAsyncKeyState('V') & 0x1)
 	{
@@ -1338,10 +1398,23 @@ void WindowResize(UINT _width, UINT _height)
 
 void LoadGameObject()
 {
-	spaceSkybox.CreateGameObject(mDev,"Assets/spaceSkybox.obj",SkyVertexShader,sizeof(SkyVertexShader));
+	satellite.CreateGameObject(mDev, "Assets/satellite.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	spaceSkybox.CreateGameObject(mDev, "Assets/spaceSkybox.obj", SkyVertexShader, sizeof(SkyVertexShader));
 	earth.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
-	CreateDDSTextureFromFile(mDev, L"Assets/Texture/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
-	CreateDDSTextureFromFile(mDev, L"Assets/Texture/Earth.dds", NULL, &earth.pGO_SRV_Texture);
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Satellite_Diffuse.dds", NULL, &satellite.pGO_SRV_Texture);
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Satellite_Spec.dds", NULL, &satellite.pGO_SRV_secTexture);
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Satellite_Norm.dds", NULL, &satellite.pGO_SRV_NormTex);
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Earth.dds", NULL, &earth.pGO_SRV_Texture);
+
+	 mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
+	 mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
+
+	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
+	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
+
+	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &satellite.pGO_VS);
+	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &satellite.pGO_PS);
 }
 
 
@@ -1360,7 +1433,7 @@ void CleanupDevice()
 	if (cLightBuff)cLightBuff->Release();
 	if (cBuff)cBuff->Release();
 	if (timerBuff)timerBuff->Release();
-
+	if (camBuff)camBuff->Release();
 	//triangle
 	if(vBuff)vBuff->Release();
 	if (vShader)vShader->Release();

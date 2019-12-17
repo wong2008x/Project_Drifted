@@ -16,8 +16,11 @@ struct OutputVertex
 
 cbuffer LightingConstant :register(b0)
 {
+	float4 dLightClr ;
 	float4 dLightDir;  //16
+	float4 pLightClr;
 	float4 pLightPos;//16
+	float4 sLightClr;
 	float4 sLightDir;//16
 	float4 sLightPos;//16
 	float innerAngle;//4
@@ -25,16 +28,20 @@ cbuffer LightingConstant :register(b0)
 	float pLightRadius;//4
 	int LightingMode;//4
 }
-static const float4 diffuseColor = { 1.0f, 1.0f, 0.878f, 1.0f };
-static const float4 pointLColor = { 0.9f,0.0f,0.0f,1.0f };
-static const float4 spotLColor = { 0.8f,0.8f,0.8f,1.0f };
-static const float4 amLightClr = { 0.2f, 0.2f, 0.2f,1.0f };
+cbuffer camConstant :register(b1)
+{
+	float4 camPos;
+	bool hasNormal;
+	bool hasMultiTex;
+	bool hasShadowMap;
+}
+static const float4 amLightClr = { 0.2f,0.2f,0.2f,1.0f };
 
 float4 main(OutputVertex input) : SV_TARGET
 {
+	float4 SpecClr = {1,1,1,1};
 	float4 textureColor;
 	float4 texture2Color;
-	
 	//Directional Light
 	float   lightIntensity;
 	float4 dirColor = { 0,0,0,0 };
@@ -47,20 +54,27 @@ float4 main(OutputVertex input) : SV_TARGET
 
 
 	textureColor = txDiffuse.Sample(samLinear, input.Tex.xy);
-	//texture2Color = txSpecular.Sample(samLinear, input.Tex.xy);
-
-	//	textureColor = textureColor * texture2Color * 2.0;
-	float4 amClr = textureColor * amLightClr;
-	//Directional Light
+	if (hasMultiTex)
+	{
+		texture2Color = txSpecular.Sample(samLinear, input.Tex.xy);
+		textureColor = textureColor * texture2Color * 2.0;
+	}
+		float4 amClr = textureColor * amLightClr;
+		//Directional Light
+		float3 toCam = normalize(camPos.xyz - input.PosW);
+		float3 reflection = reflect(dLightDir.xyz, input.Norm);
+		float specDot = saturate(dot(reflection,toCam));
+		specDot = pow(specDot,32);
 		lightIntensity = saturate(dot(input.Norm, -dLightDir.xyz));
-		dirColor = textureColor* saturate(diffuseColor * lightIntensity);
+		dirColor = textureColor* dLightClr * lightIntensity;
+
 	//Point Light
 		pLightDir = pLightPos.xyz - input.PosW;
 		float pDistance = length(pLightDir);
 		pLightDir /= pDistance;
 		float pAngularATT = dot(input.Norm, pLightDir);
 		float pRangeATT = 1.0 - saturate(pDistance / pLightRadius);
-		pointColor += textureColor * pointLColor * pAngularATT * pRangeATT;
+		pointColor += textureColor * pLightClr * pAngularATT * pRangeATT;
 	
 	//Spot LIght
 
@@ -68,7 +82,7 @@ float4 main(OutputVertex input) : SV_TARGET
 		float spotDot = dot(input.Norm, spotLDir);
 		float sAngularATT = saturate(-dot(sLightDir.xyz, spotLDir));
 		float spotFactor = saturate((sAngularATT - outerAngle) / (innerAngle - outerAngle));
-		spotColor = textureColor *spotLColor * spotDot * spotFactor;
+		spotColor = textureColor *sLightClr * spotDot * spotFactor;
 	
 		if (LightingMode == 5)
 			return textureColor;

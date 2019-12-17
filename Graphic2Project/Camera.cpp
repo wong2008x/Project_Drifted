@@ -3,7 +3,7 @@
 
 Camera::Camera()
 {
-	camPosition = XMVectorSet(0.0f, 10.0f, -20.0f, 0.0f);
+	camPosition = XMVectorSet(0.0f, 10.0f, -40.0f, 0.0f);
 	camTarget = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 }
@@ -30,8 +30,8 @@ void Camera::UpdateCamera()
 }
 void Camera::Reset()
 {
-	camPosition = XMVectorSet(0.0f, 4.0f, -10.0f, 0.0f);
-	camTarget = XMVectorSet(-10.0f, 1.0f, 0.0f, 0.0f);
+	camPosition = XMVectorSet(0.0f, 10.0f, -40.0f, 0.0f);
+	camTarget = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	camUp = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 }
 void Camera::LoadViewMatrix(XMFLOAT4X4 &_view)

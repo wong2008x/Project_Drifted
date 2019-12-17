@@ -13,6 +13,7 @@
 
 
 //Forward declaration
+
 void CleanupDevice();
 void Render();
 void ThemeOne(WVP &myMatrix);
@@ -66,6 +67,7 @@ D3D_FEATURE_LEVEL dx11 = D3D_FEATURE_LEVEL_11_0;
 ID3D11Buffer* cBuff = nullptr; //Constant Buffer
 ID3D11Buffer* timerBuff = nullptr; //Constant Buffer
 ID3D11Buffer* cLightBuff = nullptr; //Constant Buffer
+ID3D11Buffer* camBuff = nullptr;
 
 //primitive Triangle
 ID3D11Buffer* vBuff = nullptr;
@@ -127,6 +129,7 @@ ID3D11PixelShader* spPShader = nullptr;  //HLSL
 GameObject spaceSkybox;
 GameObject spaceShip;
 GameObject earth;
+GameObject satellite;
 
 vector<XMFLOAT4> objPos;
 ID3D11Texture2D* zBuffer = nullptr;
@@ -149,9 +152,8 @@ Camera secCam;
 XMFLOAT4 camPos;
 
 
-
-
 bool lookAT;
+bool SceneOne = true;
 unsigned int curObj = 0;
 
 //
@@ -163,6 +165,10 @@ XMMATRIX Scale;
 XMMATRIX Translation;
 
 LightingConstant myLighting;
+LightingConstant mySecLighting;
+
+CamConstant myfirCamCons;
+CamConstant mysecCamCons;
 
 WVP myMatricies;
 WVP mySecWorld;
