@@ -1,11 +1,11 @@
 #include "GameObject.h"
 
-bool LoadObj(const char* path, std::vector <SimpleMesh>& outVertices)
+bool LoadObj(const char* path, vector <SimpleMesh>& outVertices)
 {
-	std::vector< unsigned int > vertexIndices, uvIndices, normalIndices;
-	std::vector<XMFLOAT3> tempVerts;
-	std::vector<XMFLOAT3> tempUVs;
-	std::vector<XMFLOAT3> tempNormals;
+	vector< unsigned int > vertexIndices, uvIndices, normalIndices;
+	vector<XMFLOAT3> tempVerts;
+	vector<XMFLOAT3> tempUVs;
+	vector<XMFLOAT3> tempNormals;
 	FILE* file;
 	fopen_s(&file, path, "r");
 	if (file == NULL) {
@@ -68,8 +68,62 @@ bool LoadObj(const char* path, std::vector <SimpleMesh>& outVertices)
 		temp.Pos = tempVerts[vertexIndices[i] - 1];
 		temp.Tex = tempUVs[uvIndices[i] - 1];
 		temp.Norm = tempNormals[normalIndices[i] - 1];
-
+		temp.Tangent = { 0,0,0,0};
 		outVertices.push_back(temp);
+	}
+	for (size_t i = 0; i < outVertices.size();++i )
+	{
+
+		if (i % 3 == 0)
+		{
+
+			//XMFLOAT3 edge1 = { outVertices[i].Pos.x - outVertices[i+2].Pos.x,outVertices[i].Pos.y - outVertices[i+2].Pos.y,outVertices[i].Pos.z - outVertices[i+2].Pos.z };
+			//XMFLOAT3 edge2 = { outVertices[i + 2].Pos.x - outVertices[i+1].Pos.x,outVertices[i + 2].Pos.y - outVertices[i+1].Pos.y,outVertices[i + 2].Pos.z - outVertices[i+1].Pos.z };
+			//float tcU1 = outVertices[i].Tex.x - outVertices[i+2].Tex.x;
+			//float tcV1 = outVertices[i].Tex.y - outVertices[i+2].Tex.y;
+			//float tcU2 = outVertices[i + 1].Tex.x - outVertices[i+2].Tex.x;
+			//float tcV2 = outVertices[i + 1].Tex.y - outVertices[i+2].Tex.y;
+
+			XMFLOAT3 edge1 = { outVertices[i + 1].Pos.x - outVertices[i].Pos.x,outVertices[i + 1].Pos.y - outVertices[i].Pos.y,outVertices[i + 1].Pos.z - outVertices[i].Pos.z };
+			XMFLOAT3 edge2 = { outVertices[i + 2].Pos.x - outVertices[i].Pos.x,outVertices[i + 2].Pos.y - outVertices[i].Pos.y,outVertices[i + 2].Pos.z - outVertices[i].Pos.z };
+			float tcU1 = outVertices[i + 1].Tex.x - outVertices[i].Tex.x;
+			float tcV1 = outVertices[i + 1].Tex.y - outVertices[i].Tex.y;
+			float tcU2 = outVertices[i + 2].Tex.x - outVertices[i].Tex.x;
+			float tcV2 = outVertices[i + 2].Tex.y - outVertices[i].Tex.y;
+			float ratio = 1.0f / (tcU1 * tcV2 - tcU2 * tcV1);
+
+			//outVertices[i].Tangent.x = (tcV1 * edge1.x - tcV2 * edge2.x * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
+			//outVertices[i].Tangent.y = (tcV1 * edge1.y - tcV2 * edge2.y * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
+			//outVertices[i].Tangent.z = (tcV1 * edge1.z - tcV2 * edge2.z * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1)));
+			XMFLOAT3 uDirection = {
+				(tcV2 * edge1.x - tcV1 * edge2.x) * ratio,
+				(tcV2 * edge1.y - tcV1 * edge2.y) * ratio,
+				(tcV2 * edge1.z - tcV1 * edge2.z) * ratio
+			};
+
+			XMFLOAT3 vDirection = {
+				(tcU1 * edge2.x - tcU2 * edge1.x) * ratio,
+				(tcU1 * edge2.y - tcU2 * edge1.y) * ratio,
+				(tcU1 * edge2.z - tcU2 * edge1.z) * ratio
+			};
+
+			XMVECTOR uDirNor = XMVector3Normalize(XMLoadFloat3(&uDirection));
+			XMVECTOR dotResult = XMVector3Dot(XMLoadFloat3(&outVertices[i].Norm), uDirNor);
+			XMVECTOR tan = uDirNor - XMLoadFloat3(&outVertices[i].Norm) * dotResult;
+			tan = XMVector3Normalize(tan);
+			XMFLOAT3 temp;
+			XMStoreFloat3(&temp, tan);
+			outVertices[i].Tangent.x = temp.x;
+			outVertices[i].Tangent.y = temp.y;
+			outVertices[i].Tangent.z = temp.z;
+			//Find the  handedness
+			XMVECTOR vDirNor = XMVector3Normalize(XMLoadFloat3(&vDirection));
+			XMVECTOR crossResult = XMVector3Cross(XMLoadFloat3(&outVertices[i].Norm),uDirNor);
+			XMVECTOR dotResult1 = XMVector3Dot(crossResult, vDirNor);
+			XMFLOAT3 dot;
+			XMStoreFloat3(&dot, dotResult1);
+			outVertices[i].Tangent.w = (dot.x < 0.0f) ? -1.0f : 1.0f;
+		}
 	}
 
 	return true;

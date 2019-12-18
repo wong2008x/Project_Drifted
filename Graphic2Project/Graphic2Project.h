@@ -54,10 +54,10 @@ XMVECTOR dLight = { -0.557f,-0.557f,0.557f,1 };
 XMVECTOR pLightPos = { -10.0f,1.0f,1.0f,1 };
 XMVECTOR pLightRadius = { 15.0f };
 
-XMVECTOR sLightDir = { -0.707f,-0.707f,0.0f,1 };
+XMVECTOR sLightDir = { -1.0f,-1.0f,0.0f,1 };
 XMVECTOR sLightPos = { 0.0f,7.0f,0.0f,1 };
 XMVECTOR innerAngle = { 0.9f };
-XMVECTOR outerAngle = {0.8f};
+XMVECTOR outerAngle = {0.85f};
 bool flag = true;
 
 D3D_DRIVER_TYPE         g_driverType = D3D_DRIVER_TYPE_NULL;
@@ -126,10 +126,20 @@ ID3D11InputLayout* spLayout = nullptr;
 ID3D11VertexShader* spVShader = nullptr; //HLSL
 ID3D11PixelShader* spPShader = nullptr;  //HLSL
 
+//Theme1
+GameObject island;
+GameObject ground;
+GameObject palmTree;
+
+
+//Theme 2
 GameObject spaceSkybox;
 GameObject spaceShip;
+GameObject sun;
 GameObject earth;
+GameObject mars;
 GameObject satellite;
+GameObject moon;
 
 vector<XMFLOAT4> objPos;
 ID3D11Texture2D* zBuffer = nullptr;

@@ -365,7 +365,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
    };
    // Load the Texture
    hr = CreateDDSTextureFromFile(mDev, L"Assets/Textures/Rock_Diffuse.dds", NULL, &rockTextureRV);
@@ -474,17 +474,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreateDepthStencilView(zBuffer, nullptr, &zBufferView);
 
 
+   ////Loading Texture
    thread Loading = thread(LoadGameObject);
    Loading.join();
-
-   //hr = mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
-   //hr = mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
-
-   //hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
-   //hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
-
-   //hr = mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &satellite.pGO_VS);
-   //hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &satellite.pGO_PS);
 
 
    //Directional Light
@@ -504,12 +496,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    myLighting.lightingMode = 1;
 
 
-   mySecLighting.dLightClr = { 0.95f, 0.95f, 0.95f, 1.0f };
+   mySecLighting.dLightClr = { 1.0f, 1.0f, 1.0f, 1.0f };
    XMStoreFloat4(&mySecLighting.dLightDir, dLight);
    //Point Light
-   mySecLighting.pLightClr = { 0.9f,0.0f,0.0f,1.0f };
-   XMStoreFloat4(&mySecLighting.pLightPos, pLightPos);
-   XMStoreFloat(&mySecLighting.pLightRadius, pLightRadius);
+   mySecLighting.pLightClr = { 1.0f,0.88f,0.6f,1.0f };
+   mySecLighting.pLightPos = {-10,-100,100,1};
+   mySecLighting.pLightRadius = 1000;
    //Spot Light
    mySecLighting.sLightClr = { 0.8f,0.8f,0.8f,1.0f };
    XMStoreFloat4(&mySecLighting.sLightPos, sLightPos);
@@ -792,7 +784,10 @@ void ThemeOne(WVP &myMatrix)
 
 	mContext->Draw(rockVertex.size(), 0);
 
-
+	myfirCamCons.hasMultiTex = false;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = myfirCamCons;
+	mContext->Unmap(camBuff, 0);
 	mesh_strides[0] = { sizeof(SimpleMesh) };
 	 mesh_offsets[0] = { 0 };
 	mContext->IASetVertexBuffers(0, 1, &vFlagBuff, mesh_strides, mesh_offsets);
@@ -810,12 +805,6 @@ void ThemeOne(WVP &myMatrix)
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
-
-	myfirCamCons.hasMultiTex = false;
-	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
-	*((CamConstant*)(camBuffer.pData)) = myfirCamCons;
-	mContext->Unmap(camBuff, 0);
-
 	mContext->Draw(flagVertex.size(), 0);
 
 
@@ -823,9 +812,9 @@ void ThemeOne(WVP &myMatrix)
 
 
 	//Set Pipline
-	mesh_strides[0] = { sizeof(_OBJ_VERT_) };
+	UINT Stonestrides[] = { sizeof(_OBJ_VERT_) };
 	mesh_offsets[0] = { 0 };
-	mContext->IASetVertexBuffers(0, 1, &vStoneBuff, mesh_strides, mesh_offsets);
+	mContext->IASetVertexBuffers(0, 1, &vStoneBuff, Stonestrides, mesh_offsets);
 	mContext->IASetIndexBuffer(iStoneBuff, DXGI_FORMAT_R32_UINT, 0);
 	mContext->VSSetShader(vStoneShader, 0, 0);
 	mContext->PSSetShader(pStoneShader, 0, 0);
@@ -857,8 +846,9 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->Unmap(timerBuff, 0);
 
 	D3D11_MAPPED_SUBRESOURCE LightingBuffer;
+
 	mySecLighting.sLightPos = { XMVectorGetX(secCam.camPosition),XMVectorGetY(secCam.camPosition),XMVectorGetZ(secCam.camPosition),1.0f };
-	//mySecLighting.sLightDir = { XMVectorGetX(secCam.camTarget),XMVectorGetY(secCam.camTarget),XMVectorGetZ(secCam.camTarget) ,1.0f };
+	mySecLighting.sLightDir = { XMVectorGetX(secCam.camTarget- secCam.camPosition),XMVectorGetY(secCam.camTarget- secCam.camPosition),XMVectorGetZ(secCam.camTarget- secCam.camPosition) ,1.0f };
 	hr = mContext->Map(cLightBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &LightingBuffer);
 	*((LightingConstant*)(LightingBuffer.pData)) = mySecLighting;
 	mContext->Unmap(cLightBuff, 0);
@@ -895,10 +885,32 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->Draw(spaceSkybox.GO_vertex.size(), 0);
 	mContext->ClearDepthStencilView(zBufferView, D3D11_CLEAR_DEPTH, 1.0f, 0);
 
+	///Draw Sun
+	UINT mesh_offsets[] = { 0 };
+	mContext->IASetVertexBuffers(0, 1, &sun.pGO_Vbuff, &sun.stride, mesh_offsets);
+	mContext->VSSetShader(sun.pGO_VS, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(sun.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetConstantBuffers(1, 1, &camBuff);
+	mContext->IASetInputLayout(sun.pGO_inputLayout);
+	mContext->PSSetShaderResources(0, 1, &sun.pGO_SRV_Texture);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixRotationY(XMConvertToRadians(-3* totalTime[1])) * XMMatrixTranslation(0, 0, 100);
 
+	XMStoreFloat4(&sun.objPos, temp.r[3]);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->Draw(sun.GO_vertex.size(), 0);
 
 	//Draw Earth
-	UINT mesh_offsets[] = { 0 };
+	mysecCamCons.hasMultiTex = false;
+	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
+	*((CamConstant*)(camBuffer.pData)) = mysecCamCons;
+	mContext->Unmap(camBuff, 0);
 	mContext->IASetVertexBuffers(0, 1, &earth.pGO_Vbuff, &earth.stride, mesh_offsets);
 	mContext->VSSetShader(earth.pGO_VS, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
@@ -909,9 +921,9 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->PSSetShaderResources(0, 1, &earth.pGO_SRV_Texture);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
-	temp = XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1]))*XMMatrixTranslation(0, 0, 100);
+	temp = XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1]))*XMMatrixTranslation(200, 0, 0);
 	temp2 = XMMatrixIdentity();
-	temp2=XMMatrixRotationY(XMConvertToRadians(5 * totalTime[1]));
+	temp2=XMMatrixRotationY(XMConvertToRadians(3 * totalTime[1]))* XMMatrixTranslation(sun.objPos.x, sun.objPos.y, sun.objPos.z);
 	temp = temp * temp2;
 	XMStoreFloat4(&earth.objPos, temp.r[3]);
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
@@ -921,6 +933,52 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->Unmap(cBuff, 0);
 	mContext->Draw(earth.GO_vertex.size(), 0);
 
+
+	mContext->IASetVertexBuffers(0, 1, &mars.pGO_Vbuff, &mars.stride, mesh_offsets);
+	mContext->VSSetShader(mars.pGO_VS, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(mars.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetConstantBuffers(1, 1, &camBuff);
+	mContext->IASetInputLayout(mars.pGO_inputLayout);
+	mContext->PSSetShaderResources(0, 1, &mars.pGO_SRV_Texture);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1])) * XMMatrixTranslation(-350, 10, 0);
+	temp2 = XMMatrixIdentity();
+	temp2 = XMMatrixRotationY(XMConvertToRadians(-3 * totalTime[1])) * XMMatrixTranslation(sun.objPos.x, sun.objPos.y, sun.objPos.z);
+	temp = temp * temp2;
+	XMStoreFloat4(&mars.objPos, temp.r[3]);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->Draw(mars.GO_vertex.size(), 0);
+
+
+	//Draw SpaceShip
+	mContext->IASetVertexBuffers(0, 1, &spaceShip.pGO_Vbuff, &spaceShip.stride, mesh_offsets);
+	mContext->VSSetShader(spaceShip.pGO_VS, 0, 0);
+	mContext->PSSetShader(spaceShip.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->IASetInputLayout(spaceShip.pGO_inputLayout);
+	mContext->PSSetShaderResources(0, 1, &spaceShip.pGO_SRV_Texture);
+	mContext->PSSetShaderResources(1, 1, &spaceShip.pGO_SRV_secTexture);
+	mContext->PSSetShaderResources(2, 1, &spaceShip.pGO_SRV_NormTex);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixScaling(3.0f, 3.0f, 3.0f) * XMMatrixTranslation(XMVectorGetX(secCam.camPosition), XMVectorGetY(secCam.camPosition)-5, XMVectorGetZ(secCam.camPosition)+10);
+	temp = XMMatrixRotationY(XMConvertToRadians(180))* temp;
+	XMStoreFloat4(&spaceShip.objPos, temp.r[3]);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->Draw(spaceShip.GO_vertex.size(), 0);
+
 	//Draw Satellite
 	mContext->IASetVertexBuffers(0, 1, &satellite.pGO_Vbuff, &satellite.stride, mesh_offsets);
 	mContext->VSSetShader(satellite.pGO_VS, 0, 0);
@@ -929,6 +987,7 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->IASetInputLayout(satellite.pGO_inputLayout);
 	mContext->PSSetShaderResources(0, 1, &satellite.pGO_SRV_Texture);
 	mContext->PSSetShaderResources(1, 1, &satellite.pGO_SRV_secTexture);
+	mContext->PSSetShaderResources(2, 1, &satellite.pGO_SRV_NormTex);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	temp = XMMatrixIdentity();
@@ -945,36 +1004,35 @@ void ThemeTwo(WVP& myMatrix)
 	mContext->Unmap(cBuff, 0);
 
 	mysecCamCons.hasMultiTex = true;
-	mysecCamCons.hasNormal = true;
 	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
 	*((CamConstant*)(camBuffer.pData)) = mysecCamCons;
 	mContext->Unmap(camBuff, 0);
 
 	mContext->Draw(satellite.GO_vertex.size(), 0);
 
-	//Set Pipline
-	UINT mesh_strides[] = { sizeof(_OBJ_VERT_) };
-	mContext->IASetVertexBuffers(0, 1, &vStoneBuff, mesh_strides, mesh_offsets);
-	mContext->IASetIndexBuffer(iStoneBuff, DXGI_FORMAT_R32_UINT, 0);
-	mContext->VSSetShader(vStoneShader, 0, 0);
-	mContext->PSSetShader(pStoneShader, 0, 0);
-	mContext->IASetInputLayout(vStoneLayout);
-	mContext->PSSetShaderResources(0, 1, &stoneTextureRV);
-	mContext->PSSetSamplers(0, 1, &stoneSamplerState);
+	//Draw Moon
+	mContext->IASetVertexBuffers(0, 1, &moon.pGO_Vbuff, &moon.stride, mesh_offsets);
+	mContext->VSSetShader(moon.pGO_VS, 0, 0);
+	mContext->PSSetShader(moon.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->IASetInputLayout(moon.pGO_inputLayout);
+	mContext->PSSetShaderResources(0, 1, &moon.pGO_SRV_Texture);
+	mContext->PSSetShaderResources(1, 1, &moon.pGO_SRV_secTexture);
+	//mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	temp = XMMatrixIdentity();
+	temp = XMMatrixScaling(0.8f, 0.8f, 0.8f) * XMMatrixTranslation(75, 0, 0);
+	temp2 = XMMatrixIdentity();
+	temp2 = (XMMatrixRotationY(XMConvertToRadians(10 * totalTime[1])) * XMMatrixRotationZ(XMConvertToRadians(15))) * XMMatrixTranslation(earth.objPos.x, earth.objPos.y, earth.objPos.z);
+	temp = XMMatrixRotationX(XMConvertToRadians(10 * totalTime[1]))*temp * temp2;
+	XMStoreFloat4(&moon.objPos, temp.r[3]);
 	XMStoreFloat4x4(&myMatrix.g_World, temp);
-	stonePos = { myMatrix.g_World._41, myMatrix.g_World._42, myMatrix.g_World._43, myMatrix.g_World._44 };
+	rockPos = { myMatrix.g_World._41,myMatrix.g_World._42,myMatrix.g_World._43,myMatrix.g_World._44 };
 	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = myMatrix;
 	mContext->Unmap(cBuff, 0);
 
-	mysecCamCons.hasMultiTex = false;
-	mysecCamCons.hasNormal = false;
-	hr = mContext->Map(camBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &camBuffer);
-	*((CamConstant*)(camBuffer.pData)) = mysecCamCons;
-	mContext->Unmap(camBuff, 0);
-
-	mContext->DrawIndexed(2532, 0, 0);
+	mContext->Draw(moon.GO_vertex.size(), 0);
 }
 void Update()
 {
@@ -1380,10 +1438,52 @@ bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices)
 		temp.Pos = tempVerts[vertexIndices[i] - 1];
 		temp.Tex = tempUVs[uvIndices[i] - 1];
 		temp.Norm = tempNormals[normalIndices[i] - 1];
-		
+		temp.Tangent = {0,0,0,0};
 		outVertices.push_back(temp);
 	}
 
+	for (size_t i = 0; i < outVertices.size(); i++)
+	{
+
+		if (i % 3 == 0)
+		{
+
+			XMFLOAT3 edge1 = { outVertices[i + 1].Pos.x - outVertices[i].Pos.x,outVertices[i + 1].Pos.y - outVertices[i].Pos.y,outVertices[i + 1].Pos.z - outVertices[i].Pos.z };
+			XMFLOAT3 edge2 = { outVertices[i + 2].Pos.x - outVertices[i].Pos.x,outVertices[i + 2].Pos.y - outVertices[i].Pos.y,outVertices[i + 2].Pos.z - outVertices[i].Pos.z };
+			float txU1 = outVertices[i + 1].Tex.x - outVertices[i].Tex.x;
+			float txV1 = outVertices[i + 1].Tex.y - outVertices[i].Tex.y;
+			float txU2 = outVertices[i + 2].Tex.x - outVertices[i].Tex.x;
+			float txV2 = outVertices[i + 2].Tex.y - outVertices[i].Tex.y;
+			float ratio = 1.0f / (txU1 * txV2 - txU2 * txV1);
+			XMFLOAT3 uDirection = {
+				(txV2 * edge1.x - txV1 * edge2.x) * ratio,
+				(txV2 * edge1.y - txV1 * edge2.y) * ratio,
+				(txV2 * edge1.z - txV1 * edge2.z) * ratio
+			};
+
+			XMFLOAT3 vDirection = {
+				(txU1 * edge2.x - txU2 * edge1.x) * ratio,
+				(txU1 * edge2.y - txU2 * edge1.y) * ratio,
+				(txU1 * edge2.z - txU2 * edge1.z) * ratio
+			};
+
+			XMVECTOR uDirNor = XMVector3Normalize(XMLoadFloat3(&uDirection));
+			XMVECTOR dotResult = XMVector3Dot(XMLoadFloat3(&outVertices[i].Norm), uDirNor);
+			XMVECTOR tan = uDirNor - XMLoadFloat3(&outVertices[i].Norm) * dotResult;
+			tan = XMVector3Normalize(tan);
+			XMFLOAT3 temp;
+			XMStoreFloat3(&temp, tan);
+			outVertices[i].Tangent.x = temp.x;
+			outVertices[i].Tangent.y = temp.y;
+			outVertices[i].Tangent.z = temp.z;
+			XMVECTOR vDirNor = XMVector3Normalize(XMLoadFloat3(&vDirection));
+			XMVECTOR crossResult = XMVector3Cross(XMLoadFloat3(&outVertices[i].Norm), XMLoadFloat3(&uDirection));
+			XMVECTOR dotResult1 = XMVector3Dot(crossResult, vDirNor);
+			XMFLOAT3 dot;
+			XMStoreFloat3(&dot, dotResult1);
+		}
+
+	}
 	return true;
 }
 void WindowResize(UINT _width, UINT _height)
@@ -1398,23 +1498,49 @@ void WindowResize(UINT _width, UINT _height)
 
 void LoadGameObject()
 {
-	satellite.CreateGameObject(mDev, "Assets/satellite.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	/////Theme One
+
+
+
+
+	///Theme Two
 	spaceSkybox.CreateGameObject(mDev, "Assets/spaceSkybox.obj", SkyVertexShader, sizeof(SkyVertexShader));
+	CreateDDSTextureFromFile(mDev, L"Assets/Textures/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
+	mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
+	mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
+
+	sun.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	CreateDDSTextureFromFile(mDev, L"Assets/Textures/sun_Diffuse.dds", NULL, &sun.pGO_SRV_Texture);
+	mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &sun.pGO_VS);
+	mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &sun.pGO_PS);
+
 	earth.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
-	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/spaceSkybox.dds", NULL, &spaceSkybox.pGO_SRV_Texture);
+	CreateDDSTextureFromFile(mDev, L"Assets/Textures/Earth.dds", NULL, &earth.pGO_SRV_Texture);
+	mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
+	mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
+
+	 moon.CreateGameObject(mDev, "Assets/moon.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/moon_Diffuse.dds", NULL, &moon.pGO_SRV_Texture);
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/moon_Spec.dds", NULL, &moon.pGO_SRV_secTexture);
+	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &moon.pGO_VS);
+	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &moon.pGO_PS);
+
+	 mars.CreateGameObject(mDev, "Assets/Planet.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Mars.dds", NULL, &mars.pGO_SRV_Texture);
+	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &mars.pGO_VS);
+	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &mars.pGO_PS);
+
+	 satellite.CreateGameObject(mDev, "Assets/satellite.obj", VertexMeshShader, sizeof(VertexMeshShader));
 	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Satellite_Diffuse.dds", NULL, &satellite.pGO_SRV_Texture);
 	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Satellite_Spec.dds", NULL, &satellite.pGO_SRV_secTexture);
 	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Satellite_Norm.dds", NULL, &satellite.pGO_SRV_NormTex);
-	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/Earth.dds", NULL, &earth.pGO_SRV_Texture);
-
-	 mDev->CreateVertexShader(SkyVertexShader, sizeof(SkyVertexShader), nullptr, &spaceSkybox.pGO_VS);
-	 mDev->CreatePixelShader(SkyPixelShader, sizeof(SkyPixelShader), nullptr, &spaceSkybox.pGO_PS);
-
-	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &earth.pGO_VS);
-	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &earth.pGO_PS);
-
 	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &satellite.pGO_VS);
 	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &satellite.pGO_PS);
+
+	 spaceShip.CreateGameObject(mDev, "Assets/spaceShip.obj", VertexMeshShader, sizeof(VertexMeshShader));
+	 CreateDDSTextureFromFile(mDev, L"Assets/Textures/spaceShip_talon.dds", NULL, &spaceShip.pGO_SRV_Texture);
+	 mDev->CreateVertexShader(VertexMeshShader, sizeof(VertexMeshShader), nullptr, &spaceShip.pGO_VS);
+	 mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &spaceShip.pGO_PS);
 }
 
 

@@ -21,7 +21,7 @@ struct SimpleMesh
 	XMFLOAT3 Pos;
 	XMFLOAT3 Tex;
 	XMFLOAT3 Norm;
-	XMFLOAT3 Tangent;
+	XMFLOAT4 Tangent;
 };
 struct SkyBox
 {
