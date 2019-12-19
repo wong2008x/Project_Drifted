@@ -1398,19 +1398,20 @@ void Update()
 		curCamera->Reset();
 
 	}
+
+	GetClientRect(mWindow, &mWinR);
 	if (GetAsyncKeyState(VK_F1) & 0x1)
 	{
-		GetClientRect(mWindow, &mWinR);
+		
 
 		multiviewPort = !multiviewPort;
-
 		if(multiviewPort)
 		{
-			aspectRatio = (mWinR.right - mWinR.left)/2.0f / (mWinR.bottom - mWinR.top);
+			aspectRatio = ((mWinR.right - mWinR.left)/2.0f) / (mWinR.bottom - mWinR.top);
 		}
 		else
 		{
-			aspectRatio = (mWinR.right - mWinR.left) /(mWinR.bottom - mWinR.top)/1.0f;
+			aspectRatio = ((mWinR.right - mWinR.left) / 1.0f )/(mWinR.bottom - mWinR.top);
 		}
 	
 		XMStoreFloat4x4(&myMatricies.g_Projection, XMMatrixPerspectiveFovLH(XMConvertToRadians(FOV), aspectRatio, nPlane, fPlane));
