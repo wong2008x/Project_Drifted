@@ -167,6 +167,7 @@ GameObject satellite;
 GameObject moon;
 
 vector<XMFLOAT4> objPos;
+vector<XMFLOAT4> objPos2;
 ID3D11Texture2D* zBuffer = nullptr;
 ID3D11DepthStencilView* zBufferView = nullptr;
 

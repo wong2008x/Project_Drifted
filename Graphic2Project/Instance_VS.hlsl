@@ -26,7 +26,12 @@ cbuffer ConstantBuffer : register(b0)
 
 }
 
-OutputVertex main(InputStruct input, float3 instancePos : INSTANCEPOS)
+cbuffer instanceBuffer : register(b1)
+{
+    float3 instancePos;
+}
+
+OutputVertex main(InputStruct input, float3 instancePos:INSTANCEPOS)
 {
 	OutputVertex output = (OutputVertex) 0;
 	input.Pos += instancePos;

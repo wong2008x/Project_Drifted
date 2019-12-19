@@ -44,6 +44,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg;
 	mTimer.Restart();
+
+	
     // Main message loop:
     while (true)//GetMessage(&msg, nullptr, 0, 0))
     {
@@ -349,6 +351,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
 
 
+
    D3D11_BLEND_DESC blendDESC;
    ZeroMemory(&blendDESC, sizeof(blendDESC));
    blendDESC.AlphaToCoverageEnable = true;
@@ -368,12 +371,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    ////Multithreading
    thread Loading = thread(LoadGameObject);
    Loading.join();
-
-   ZeroMemory(&bDesc, sizeof(bDesc));
-   ZeroMemory(&subData, sizeof(subData));
+   srand(time(0));
+   
 
    loadObject("Assets/Rock.obj", rockVertex);
-
+   ZeroMemory(&bDesc, sizeof(bDesc));
+   ZeroMemory(&subData, sizeof(subData));
    bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
    bDesc.Usage = D3D11_USAGE_IMMUTABLE;
    bDesc.ByteWidth = sizeof(SimpleMesh)*rockVertex.size();
@@ -513,20 +516,48 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    loadObject("Assets/palmTree1.obj",treeVertex);
    CreateDDSTextureFromFile(mDev, L"Assets/Textures/palm1_Diffuse.dds", NULL, &treeTextureRV);
+
+   ZeroMemory(&bDesc, sizeof(bDesc));
+   ZeroMemory(&subData, sizeof(subData));
+   bDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+   bDesc.Usage = D3D11_USAGE_IMMUTABLE;
+   bDesc.ByteWidth = sizeof(SimpleMesh) * treeVertex.size();
+   bDesc.MiscFlags = 0;
+   bDesc.CPUAccessFlags = 0;
+   bDesc.StructureByteStride = 0;
+   subData.pSysMem = treeVertex.data();
+   hr = mDev->CreateBuffer(&bDesc, &subData, &treeVertBuff);
+
+
+   treeWorld = XMMatrixIdentity();
+
+   D3D11_INPUT_ELEMENT_DESC layout[] =
+   {
+		{ "POSITION" , 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+
+		{ "INSTANCEPOS", 0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1},
+   };
+   hr=mDev->CreateInputLayout(layout,5,Instance_VS,sizeof(Instance_VS), &treeInsLayout);
+   hr = mDev->CreateVertexShader(Instance_VS, sizeof(Instance_VS), nullptr, &treeVShader);
+   hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &treePShader);
+
    ////////////////////////////////////////////Instancing Trees////////////////////////////////////////////
    vector<InstanceData> inst(numTrees);
    XMVECTOR tempPos;
-   srand(time(NULL));
    // We are just creating random positions for the trees, between the positions of (-100, 0, -100) to (100, 0, 100)
    // then storing the position in our instanceData array
    for (int i = 0; i < numTrees; i++)
    {
-	   float randX = ((float)(rand() % 2000) / 10) - 100;
-	   float randZ = ((float)(rand() % 2000) / 10) - 100;
-	   tempPos = XMVectorSet(randX, 0.0f, randZ, 0.0f);
+	   float randX = ((float)(rand() % 75)) - 50;
+	   float randZ = ((float)(rand() % 75)) - 50;
+	   tempPos = XMVectorSet(randX, -2.5f, randZ, 0.0f);
 
 	   XMStoreFloat3(&inst[i].pos, tempPos);
    }
+   // Create our trees instance buffer
    D3D11_BUFFER_DESC instBuffDesc;
    ZeroMemory(&instBuffDesc, sizeof(instBuffDesc));
 
@@ -543,22 +574,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    hr = mDev->CreateBuffer(&instBuffDesc, &instData, &treeInstanceBuff);
 
    treeWorld = XMMatrixIdentity();
-
-   D3D11_INPUT_ELEMENT_DESC layout[] =
-   {
-	   { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	   { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-	   { "NORMAL",     0, DXGI_FORMAT_R32G32B32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-	   { "TANGENT", 0, DXGI_FORMAT_R32G32B32A32_FLOAT,    0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-	   /************************************New Stuff****************************************************/
-	   // Instance elements
-	   // last parameter (InstanceDataStepRate) is one because we will "step" to the next instance element (INSTANCEPOS) after drawing 1 instance (tree)
-	   { "INSTANCEPOS", 0, DXGI_FORMAT_R32G32B32_FLOAT,    1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1}
-	   /*************************************************************************************************/
-   };
-   mDev->CreateInputLayout(layout,5,Instance_VS,sizeof(Instance_VS), &treeInsLayout);
-   hr = mDev->CreateVertexShader(Instance_VS, sizeof(Instance_VS), nullptr, &treeVShader);
-   hr = mDev->CreatePixelShader(PixelMeshShader, sizeof(PixelMeshShader), nullptr, &treePShader);
 
 
 
@@ -942,13 +957,14 @@ void ThemeOne(WVP &myMatrix)
 	mContext->Draw(fussy.GO_vertex.size(), 0);
 
 	//Draw PalmTree
+
+	mContext->IASetInputLayout(palmTree.pGO_inputLayout);
 	mContext->IASetVertexBuffers(0, 1, &palmTree.pGO_Vbuff, &palmTree.stride, mesh_offsets);
 	mContext->VSSetShader(palmTree.pGO_VS, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(palmTree.pGO_PS, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	mContext->PSSetConstantBuffers(1, 1, &camBuff);
-	mContext->IASetInputLayout(palmTree.pGO_inputLayout);
 	mContext->PSSetShaderResources(0, 1, &palmTree.pGO_SRV_Texture);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
@@ -960,13 +976,38 @@ void ThemeOne(WVP &myMatrix)
 	mContext->Unmap(cBuff, 0);
 	mContext->Draw(palmTree.GO_vertex.size(), 0);
 
+
+
+	//Draw treasureChest
+	mContext->IASetInputLayout(treasureChest.pGO_inputLayout);
+	mContext->IASetVertexBuffers(0, 1, &treasureChest.pGO_Vbuff, &treasureChest.stride, mesh_offsets);
+	mContext->VSSetShader(treasureChest.pGO_VS, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(treasureChest.pGO_PS, 0, 0);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetConstantBuffers(1, 1, &camBuff);
+	mContext->PSSetShaderResources(0, 1, &treasureChest.pGO_SRV_Texture);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixRotationY(XMConvertToRadians(75))*(XMMatrixScaling(0.6f,0.7f,0.7f)*XMMatrixTranslation(5, 3.5f, 15));
+	
+	XMStoreFloat4(&treasureChest.objPos, temp.r[3]);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->Draw(treasureChest.GO_vertex.size(), 0);
+
+
+
+	///palmTree
+	mContext->IASetInputLayout(palmTree1.pGO_inputLayout);
 	mContext->IASetVertexBuffers(0, 1, &palmTree1.pGO_Vbuff, &palmTree1.stride, mesh_offsets);
 	mContext->VSSetShader(palmTree1.pGO_VS, 0, 0);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(palmTree1.pGO_PS, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	mContext->PSSetConstantBuffers(1, 1, &camBuff);
-	mContext->IASetInputLayout(palmTree1.pGO_inputLayout);
 	mContext->PSSetShaderResources(0, 1, &palmTree1.pGO_SRV_Texture);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
@@ -978,49 +1019,28 @@ void ThemeOne(WVP &myMatrix)
 	mContext->Unmap(cBuff, 0);
 	mContext->Draw(palmTree1.GO_vertex.size(), 0);
 
-	//Draw treasureChest
-	mContext->IASetVertexBuffers(0, 1, &treasureChest.pGO_Vbuff, &treasureChest.stride, mesh_offsets);
-	mContext->VSSetShader(treasureChest.pGO_VS, 0, 0);
-	mContext->VSSetConstantBuffers(0, 1, &cBuff);
-	mContext->PSSetShader(treasureChest.pGO_PS, 0, 0);
-	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
-	mContext->PSSetConstantBuffers(1, 1, &camBuff);
-	mContext->IASetInputLayout(treasureChest.pGO_inputLayout);
-	mContext->PSSetShaderResources(0, 1, &treasureChest.pGO_SRV_Texture);
-	mContext->PSSetSamplers(0, 1, &rockSamplerState);
-	temp = XMMatrixIdentity();
-	temp = XMMatrixScaling(0.7f,0.7f,0.7f)*XMMatrixTranslation(-5, 3.5f, 15);
-	XMStoreFloat4(&treasureChest.objPos, temp.r[3]);
-	XMStoreFloat4x4(&myMatrix.g_World, temp);
-	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-	*((WVP*)(gpuBuffer.pData)) = myMatrix;
-	mContext->Unmap(cBuff, 0);
-	mContext->Draw(treasureChest.GO_vertex.size(), 0);
-
-
-	// Store the vertex and instance buffers into an array
 	////Create Palm Trees
 	UINT treeStrides[] = { sizeof(InstanceData) };
 	UINT treeOffsets[] = { 0};
 	//Set the WVP matrix and send it to the constant buffer in effect file
-	//mContext->IASetVertexBuffers(0, 1, &treeVertBuff, mesh_strides,treeOffsets);
-	//mContext->IASetVertexBuffers(1, 1, &treeInstanceBuff, treeStrides, treeOffsets);
-	//mContext->VSSetShader(treeVShader,0,0);
-	//mContext->PSSetShader(treePShader, 0, 0);
-	//mContext->IASetInputLayout(treeInsLayout);
-	//mContext->VSSetConstantBuffers(0, 1, &cBuff);
-	//mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
-	//mContext->PSSetConstantBuffers(1, 1, &camBuff);
-	//mContext->PSSetShaderResources(0, 1, &treeTextureRV);
-	//mContext->PSSetSamplers(0, 1, &rockSamplerState);
+	mContext->IASetInputLayout(treeInsLayout);
+	mContext->IASetVertexBuffers(0, 1, &treeVertBuff, mesh_strides,treeOffsets);
+	mContext->IASetVertexBuffers(1, 1, &treeInstanceBuff, treeStrides, treeOffsets);
+	mContext->VSSetShader(treeVShader,0,0);
+	mContext->PSSetShader(treePShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
+	mContext->PSSetConstantBuffers(1, 1, &camBuff);
+	mContext->PSSetShaderResources(0, 1, &treeTextureRV);
+	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 
-	//temp = XMMatrixIdentity();
-	//temp = XMMatrixTranslation(-5, 3.5f, 15);
-	//XMStoreFloat4x4(&myMatrix.g_World, temp);
-	//hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-	//*((WVP*)(gpuBuffer.pData)) = myMatrix;
-	//mContext->Unmap(cBuff, 0);
-	//mContext->DrawInstanced(treeVertex.size(), 20, 0, 0);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixTranslation(-5, 3.5f, 15);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->DrawInstanced(treeVertex.size(), 20, 0, 1);
 
 
 
@@ -1416,12 +1436,26 @@ void Update()
 	if (GetAsyncKeyState('V') & 0x1)
 	{
 		lookAT = !lookAT;
-		if (objPos.size() < 4)
+		if(SceneOne)
+		{ 
+			if (objPos.size() < 4)
+			{
+				objPos.push_back(trianglePos);
+				objPos.push_back(player.objPos);
+				objPos.push_back(treasureChest.objPos);
+				objPos.push_back(fussy.objPos);
+			}
+		}
+		else
 		{
-			objPos.push_back(trianglePos);
-			objPos.push_back(rockPos);
-			objPos.push_back(flagPos);
-			objPos.push_back(stonePos);
+			if (objPos2.size() < 5)
+			{
+				objPos2.push_back(sun.objPos);
+				objPos2.push_back(earth.objPos);
+				objPos2.push_back(moon.objPos);
+				objPos2.push_back(satellite.objPos);
+				objPos2.push_back(mars.objPos);
+			}
 		}
 	}
 	
@@ -1462,16 +1496,40 @@ void Update()
 	{
 		if (GetAsyncKeyState(VK_UP) & 0x1)
 		{
+			if(SceneOne)
+			{ 
 			if (curObj < objPos.size())
 				curObj++;
 			if (curObj == objPos.size())
 				curObj = 0;
+			}
+			else
+			{
+				if (curObj < objPos2.size())
+					curObj++;
+				if (curObj == objPos2.size())
+					curObj = 0;
+			}
 		}
-		objPos[0] = trianglePos;
-		objPos[1] = rockPos;
-		objPos[2] = flagPos;
-		objPos[3] = trianglePos;
-		curCamera->camTarget = XMLoadFloat4(&objPos[curObj]);
+
+		if (SceneOne)
+		{
+			objPos[0] = trianglePos;
+			objPos[1] = player.objPos;
+			objPos[2] = treasureChest.objPos;
+			objPos[3] = fussy.objPos;
+
+			curCamera->camTarget = XMLoadFloat4(&objPos[curObj]);
+		}
+		else
+		{
+			objPos2[0] = sun.objPos;
+			objPos2[1] = earth.objPos;
+			objPos2[2] = moon.objPos;
+			objPos2[3] = satellite.objPos;
+			objPos2[4] = mars.objPos;
+			curCamera->camTarget = XMLoadFloat4(&objPos2[curObj]);
+		}
 	}
 
 	XMStoreFloat4(&camPos, curCamera->camPosition);
