@@ -34,7 +34,7 @@ OutputVertex main(InputStruct input)
 	OutputVertex output = (OutputVertex)0;
 	output.Pos = float4(input.Pos, 1);
 
-	float multiplyValue =0.8f+ 1.5f*abs(sin(timer * 1.5f + output.Pos.x)); //how much we want to multiply our vertex
+	float multiplyValue =0.8f+2.5f*sin(timer * 2.0f + output.Pos.x); //how much we want to multiply our vertex
 	output.Pos.y *= multiplyValue ;
 
 	output.Pos = mul(output.Pos, World); //because it is column major

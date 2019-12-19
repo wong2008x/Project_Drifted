@@ -551,9 +551,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    // then storing the position in our instanceData array
    for (int i = 0; i < numTrees; i++)
    {
-	   float randX = ((float)(rand() % 75)) - 50;
-	   float randZ = ((float)(rand() % 75)) - 50;
-	   tempPos = XMVectorSet(randX, -2.5f, randZ, 0.0f);
+	   float randX = ((float)(rand() % 50)) - 25;
+	   float randZ = ((float)(rand() % 50)) - 25;
+	   tempPos = XMVectorSet(randX, -3.5f, randZ, 0.0f);
 
 	   XMStoreFloat3(&inst[i].pos, tempPos);
    }
@@ -815,23 +815,23 @@ void ThemeOne(WVP &myMatrix)
 
 
 	///Procedually draw, but no luck....
-	//mContext->IASetVertexBuffers(0, 1, &spVertBuffer, strides, offsets);
-	//mContext->IASetIndexBuffer(spIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
-	//mContext->IASetInputLayout(spLayout);
-	//mContext->VSSetShader(spVShader, 0, 0);
-	//mContext->VSSetConstantBuffers(0, 1, &cBuff);
-	//mContext->PSSetShader(spPShader, 0, 0);
-	//mContext->RSSetState(RSCullNone);
-	//temp = XMMatrixIdentity();
-	//temp = XMMatrixScaling(5, 5, 5) * XMMatrixTranslation(0, 5, 0);
-	//temp2 = XMMatrixIdentity();
-	//temp2 = XMMatrixRotationY(5 * totalTime[1]);
-	//temp = XMMatrixMultiply(temp2, temp);
-	//XMStoreFloat4x4(&myMatrix.g_World, temp);
-	//hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-	//*((WVP*)(gpuBuffer.pData)) = myMatrix;
-	//mContext->Unmap(cBuff, 0);
-	//mContext->DrawIndexed(spVertexNum,0, 0);
+	mContext->IASetVertexBuffers(0, 1, &spVertBuffer, strides, offsets);
+	mContext->IASetIndexBuffer(spIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	mContext->IASetInputLayout(spLayout);
+	mContext->VSSetShader(spVShader, 0, 0);
+	mContext->VSSetConstantBuffers(0, 1, &cBuff);
+	mContext->PSSetShader(spPShader, 0, 0);
+	mContext->RSSetState(RSCullNone);
+	temp = XMMatrixIdentity();
+	temp = XMMatrixScaling(5, 5, 5) * XMMatrixTranslation(0, 5, 0);
+	temp2 = XMMatrixIdentity();
+	temp2 = XMMatrixRotationY(5 * totalTime[1]);
+	temp = XMMatrixMultiply(temp2, temp);
+	XMStoreFloat4x4(&myMatrix.g_World, temp);
+	hr = mContext->Map(cBuff, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	*((WVP*)(gpuBuffer.pData)) = myMatrix;
+	mContext->Unmap(cBuff, 0);
+	mContext->DrawIndexed(spVertexNum,0, 0);
 
 
 
@@ -879,13 +879,15 @@ void ThemeOne(WVP &myMatrix)
 
 
 	//Draw Ocean
+
+	mContext->IASetInputLayout(ground.pGO_inputLayout);
 	mContext->IASetVertexBuffers(0, 1, &ground.pGO_Vbuff, &ground.stride, mesh_offsets);
 	mContext->VSSetShader(ground.pGO_VS, 0, 0);
+	mContext->VSSetConstantBuffers(1, 1, &timerBuff);
 	mContext->VSSetConstantBuffers(0, 1, &cBuff);
 	mContext->PSSetShader(ground.pGO_PS, 0, 0);
 	mContext->PSSetConstantBuffers(0, 1, &cLightBuff);
 	mContext->PSSetConstantBuffers(1, 1, &camBuff);
-	mContext->IASetInputLayout(ground.pGO_inputLayout);
 	mContext->PSSetShaderResources(0, 1, &ground.pGO_SRV_Texture);
 	mContext->PSSetSamplers(0, 1, &rockSamplerState);
 	temp = XMMatrixIdentity();
@@ -1558,7 +1560,7 @@ void CreateSphere(int LatLines, int LongLines)
 
 	vertices[0].Pos.x = 0.0f;
 	vertices[0].Pos.y = 0.0f;
-	vertices[0].Pos.z = 1.0f;
+	vertices[0].Pos.z = 0.25f;
 
 	for (unsigned int i = 0; i < LatLines - 2; ++i)
 	{
@@ -1572,7 +1574,8 @@ void CreateSphere(int LatLines, int LongLines)
 			currVertPos = XMVector3Normalize(currVertPos);
 			vertices[i * LongLines + j + 1].Pos.x = XMVectorGetX(currVertPos);
 			vertices[i * LongLines + j + 1].Pos.y = XMVectorGetY(currVertPos);
-			vertices[i * LongLines + j + 1].Pos.z = XMVectorGetZ(currVertPos);
+			vertices[i * LongLines + j + 1].Pos.z = -XMVectorGetZ(currVertPos);
+			vertices[i * LongLines + j + 1].Color = { 1,0,0,1 };
 		}
 	}
 
