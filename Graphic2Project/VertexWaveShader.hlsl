@@ -1,8 +1,11 @@
+#pragma pack_matrix(row_major)
+
 struct InputStruct
 {
 	float3 Pos : POSITION;
 	float3 Tex : TEXCOORD;
 	float3 Norm : NORMAL;
+	float4 Tan : TANGENT;
 };
 
 struct OutputVertex
@@ -10,7 +13,8 @@ struct OutputVertex
 	float4 Pos : SV_POSITION;
 	float3 Tex : TEXCOORD;
 	float3 Norm : NORMAL;
-	float3 PosW:WORLDPOS;
+	float3 PosW : WORLDPOS;
+	float Timer : TIME;
 };
 
 cbuffer ConstantBuffer	 : register(b0)
@@ -30,17 +34,16 @@ OutputVertex main(InputStruct input)
 	OutputVertex output = (OutputVertex)0;
 	output.Pos = float4(input.Pos, 1);
 
-	float multiplyValue = 0.8f+0.5f*abs(cos(timer * 2.5f + output.Pos.y)); //how much we want to multiply our vertex
-	output.Pos.x *= multiplyValue ;
-	output.Pos.z *= multiplyValue ;
+	float multiplyValue =0.8f+ 1.5f*abs(sin(timer * 1.5f + output.Pos.x)); //how much we want to multiply our vertex
+	output.Pos.y *= multiplyValue ;
 
-	output.Pos = mul(World, output.Pos); //because it is column major
+	output.Pos = mul(output.Pos, World); //because it is column major
 	//for lighting
 	output.PosW = output.Pos.xyz;
-	output.Norm = mul(World, float4(input.Norm, 0)).xyz;
-
-	output.Pos = mul(View, output.Pos);
-	output.Pos = mul(Projection, output.Pos);
+	output.Norm = mul(float4(input.Norm, 0), World).xyz;
+	output.Pos = mul(output.Pos, View);
+	output.Pos = mul(output.Pos, Projection);
+	output.Timer = float(timer);
 	output.Tex = input.Tex;
 
 	return output;

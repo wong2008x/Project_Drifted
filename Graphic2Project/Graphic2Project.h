@@ -22,7 +22,7 @@ void Update();
 bool loadObject(const char* path, std::vector <SimpleMesh>& outVertices);
 void WindowResize(UINT _width, UINT _height);
 void LoadGameObject();
-
+void CreateSphere(int LatLines, int LongLines);
 
 
 //Global Variable
@@ -32,8 +32,9 @@ XTime mTimer;
 double totalTime[2];
 double delta_time = 0;
 float cameraSpeed = 5.f;
-bool multiviewPort = true;
+bool multiviewPort = false;
 
+const int numTrees = 10;
 
 
 HWND mWindow;
@@ -43,6 +44,11 @@ ID3D11Device* mDev = nullptr;
 IDXGISwapChain* mSwap = nullptr;
 ID3D11DeviceContext* mContext = nullptr;
 ID3D11RenderTargetView* mRTV = nullptr;
+ID3D11BlendState* mBlendState = nullptr;
+ID3D11RasterizerState* RSCullNone=nullptr;
+ID3D11DeviceContext* mDeferredContext = nullptr;
+ID3D11CommandList*  mCommandList = nullptr;
+
 D3D11_VIEWPORT mPort;
 D3D11_VIEWPORT mFirPort;
 D3D11_VIEWPORT mSecPort;
@@ -51,11 +57,11 @@ D3D11_VIEWPORT mSecPort;
 
 //Lighting;
 XMVECTOR dLight = { -0.557f,-0.557f,0.557f,1 };
-XMVECTOR pLightPos = { -10.0f,1.0f,1.0f,1 };
+XMVECTOR pLightPos = { 2.0f,10.0f,10.0f,1 };
 XMVECTOR pLightRadius = { 15.0f };
 
 XMVECTOR sLightDir = { -1.0f,-1.0f,0.0f,1 };
-XMVECTOR sLightPos = { 0.0f,7.0f,0.0f,1 };
+XMVECTOR sLightPos = { 10.0f,7.0f,-5.0f,1 };
 XMVECTOR innerAngle = { 0.9f };
 XMVECTOR outerAngle = {0.85f};
 bool flag = true;
@@ -126,10 +132,29 @@ ID3D11InputLayout* spLayout = nullptr;
 ID3D11VertexShader* spVShader = nullptr; //HLSL
 ID3D11PixelShader* spPShader = nullptr;  //HLSL
 
+// Tree data (loaded from an obj file)
+vector<SimpleMesh> treeVertex;
+ID3D11Buffer* treeInstanceBuff;
+ID3D11Buffer* treeVertBuff;
+ID3D11InputLayout* treeInsLayout = nullptr;
+ID3D11ShaderResourceView* treeTextureRV = nullptr;
+ID3D11VertexShader* treeVShader = nullptr; //HLSL
+ID3D11PixelShader*    treePShader = nullptr;  //HLSL
+unsigned int spVertexNum=0;
+
+int treeSubsets = 0;
+vector<int> treeSubsetIndexStart;
+XMMATRIX treeWorld;
+
+
 //Theme1
 GameObject island;
 GameObject ground;
 GameObject palmTree;
+GameObject palmTree1;
+GameObject treasureChest;
+GameObject player;
+GameObject fussy;
 
 
 //Theme 2

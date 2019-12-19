@@ -54,16 +54,16 @@ float4 main(OutputVertex input) : SV_TARGET
 	input.Norm = normalize(input.Norm);
 
 
-	textureColor = txDiffuse.Sample(samLinear, input.Tex);
+	textureColor = txDiffuse.Sample(samLinear, input.Tex.xy);
 	if (hasMultiTex)
 	{
-		texture2Color = txSpecular.Sample(samLinear, input.Tex);
+		texture2Color = txSpecular.Sample(samLinear, input.Tex.xy);
 		textureColor = textureColor * texture2Color * 2.0;
 	}
 
 	if (hasNormal == true)
 	{
-		float4 normalMap = txNorm.Sample(samLinear, input.Tex);
+		float4 normalMap = txNorm.Sample(samLinear, input.Tex.xy);
 		normalMap = (2.0f * normalMap) - 1.0f;
 		float3 tangent = normalize(input.Tan-dot(input.Tan,input.Norm)*input.Norm);
 		float3 biTangent = cross(input.Norm,input.Tan);

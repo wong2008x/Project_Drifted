@@ -6,3 +6,5 @@
 #include "SkyPixelShader.csh"
 #include "SkyVertexShader.csh"
 #include "PixelShader.csh"
+#include "Water_PS.csh"
+#include "Instance_VS.csh"

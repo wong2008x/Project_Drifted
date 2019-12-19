@@ -7,6 +7,7 @@
 #include <fstream>
 #include <DirectXMath.h>
 #include <DirectXColors.h>
+#include	<random>
 using namespace std;
 using namespace DirectX;
 #pragma once
@@ -26,6 +27,11 @@ struct SimpleMesh
 struct SkyBox
 {
 	XMFLOAT3 Pos;
+};
+
+struct InstanceData
+{
+	XMFLOAT3 pos;
 };
 
 
